@@ -1,9 +1,12 @@
 /* admin-panel-frontend/src/app/globals.css */
+
+/* XÓA HOÀN TOÀN CÁC DÒNG TAILWIND SAU:
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+*/
 
-/* Remove default Next.js styles */
+/* Reset CSS cơ bản */
 * {
   box-sizing: border-box;
   padding: 0;
@@ -14,8 +17,8 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  /* Font Inter sẽ được định nghĩa ở layout.tsx */
-  /* color: #333; */ /* Hoặc màu chữ mặc định của Ant Design */
+  /* Font Inter được định nghĩa ở layout.tsx */
+  /* Ant Design sẽ cung cấp màu chữ mặc định */
 }
 
 a {

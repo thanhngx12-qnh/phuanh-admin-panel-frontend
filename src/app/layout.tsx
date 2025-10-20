@@ -2,14 +2,22 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { ConfigProvider } from 'antd'; // Import ConfigProvider
-import theme from '@/configs/theme'; // Import theme của chúng ta
+import { ConfigProvider } from 'antd';
+import theme from '@/configs/theme';
+import AntdRegistry from '@/lib/AntdRegistry';
+import React from 'react';
+import { siteConfig } from '@/configs/site'; // <-- Import siteConfig
 
 const inter = Inter({ subsets: ['latin'] });
 
+// Cập nhật Metadata để sử dụng thông tin từ siteConfig
 export const metadata: Metadata = {
-  title: 'Quang Minh Admin Panel',
-  description: 'Admin Panel for Quang Minh Smart Border',
+  title: {
+    default: siteConfig.defaultTitle,
+    template: siteConfig.titleTemplate,
+  },
+  description: siteConfig.description,
+  authors: [{ name: siteConfig.companyName }],
 };
 
 export default function RootLayout({
@@ -18,12 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        {/* Bọc toàn bộ ứng dụng bằng Ant Design ConfigProvider để áp dụng theme */}
-        <ConfigProvider theme={theme}>
-          {children}
-        </ConfigProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
+        <AntdRegistry>
+          <ConfigProvider theme={theme} wave={{ disabled: true }}>
+            {children}
+          </ConfigProvider>
+        </AntdRegistry>
       </body>
     </html>
   );
