@@ -6,11 +6,11 @@ import { ConfigProvider } from 'antd';
 import theme from '@/configs/theme';
 import AntdRegistry from '@/lib/AntdRegistry';
 import React from 'react';
-import { siteConfig } from '@/configs/site'; // <-- Import siteConfig
+import { siteConfig } from '@/configs/site';
+import { AppProvider } from '@/providers/AppProvider'; // <-- Import AppProvider
 
 const inter = Inter({ subsets: ['latin'] });
 
-// Cập nhật Metadata để sử dụng thông tin từ siteConfig
 export const metadata: Metadata = {
   title: {
     default: siteConfig.defaultTitle,
@@ -28,11 +28,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <AntdRegistry>
-          <ConfigProvider theme={theme} wave={{ disabled: true }}>
-            {children}
-          </ConfigProvider>
-        </AntdRegistry>
+        {/* Bọc toàn bộ bằng AppProvider để cung cấp React Query context */}
+        <AppProvider>
+          <AntdRegistry>
+            <ConfigProvider theme={theme} wave={{ disabled: true }}>
+              {children}
+            </ConfigProvider>
+          </AntdRegistry>
+        </AppProvider>
       </body>
     </html>
   );
