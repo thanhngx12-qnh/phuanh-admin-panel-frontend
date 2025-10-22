@@ -2,7 +2,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { ConfigProvider } from 'antd';
+import { App, ConfigProvider } from 'antd'; // <-- Import 'App'
 import theme from '@/configs/theme';
 import AntdRegistry from '@/lib/AntdRegistry';
 import React from 'react';
@@ -31,7 +31,10 @@ export default function RootLayout({
         <AppProvider>
           <AntdRegistry>
             <ConfigProvider theme={theme} wave={{ disabled: true }}>
-              {children}
+              {/* Bọc children bằng component <App> của Ant Design */}
+              <App>
+                {children}
+              </App>
             </ConfigProvider>
           </AntdRegistry>
         </AppProvider>

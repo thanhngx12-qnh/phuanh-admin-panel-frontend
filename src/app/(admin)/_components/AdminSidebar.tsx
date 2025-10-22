@@ -2,36 +2,50 @@
 'use client';
 
 import React from 'react';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, MenuProps } from 'antd';
 import { DashboardOutlined, TruckOutlined, FormOutlined, AppstoreOutlined, ReadOutlined, UserOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { siteConfig } from '@/configs/site';
+import { useAuthStore } from '@/stores/authStore';
 
 const { Sider } = Layout;
 
-// TODO: Logic filter menu theo role sẽ được thêm sau
-const menuItems = [
-  { key: '/admin', icon: <DashboardOutlined />, label: 'Dashboard', roles: ['ADMIN', 'CONTENT_MANAGER', 'SALES', 'OPS'] },
-  { key: '/admin/consignments', icon: <TruckOutlined />, label: 'Quản lý Vận đơn', roles: ['ADMIN', 'OPS'] },
-  { key: '/admin/quotes', icon: <FormOutlined />, label: 'Quản lý Báo giá', roles: ['ADMIN', 'SALES'] },
-  {
-    key: 'cms',
-    icon: <AppstoreOutlined />,
-    label: 'Quản lý Nội dung',
-    roles: ['ADMIN', 'CONTENT_MANAGER'],
-    children: [
-      { key: '/admin/services', label: 'Dịch vụ' },
-      { key: '/admin/news', label: 'Tin tức' },
-    ],
-  },
-  { key: '/admin/careers', icon: <ReadOutlined />, label: 'Quản lý Tuyển dụng', roles: ['ADMIN', 'CONTENT_MANAGER'] },
-  { key: '/admin/users', icon: <UserOutlined />, label: 'Quản lý Người dùng', roles: ['ADMIN'] },
-];
+// --- SỬA LỖI DEPRECATED WARNING ---
+// Định nghĩa kiểu cho một mục menu để dễ quản lý
+type MenuItem = Required<MenuProps>['items'][number];
+
+// Hàm helper để tạo một mục menu
+function getItem(
+  label: React.ReactNode,
+  key: React.Key,
+  icon?: React.ReactNode,
+  children?: MenuItem[],
+): MenuItem {
+  return {
+    key,
+    icon,
+    children,
+    label,
+  } as MenuItem;
+}
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const accessibleMenuItems = menuItems;
+  const user = useAuthStore((state) => state.user);
+
+  // TODO: Logic filter menu theo role sẽ được hoàn thiện sau
+  const items: MenuItem[] = [
+    getItem(<Link href="/admin">Dashboard</Link>, '/admin', <DashboardOutlined />),
+    getItem(<Link href="/admin/consignments">Quản lý Vận đơn</Link>, '/admin/consignments', <TruckOutlined />),
+    getItem(<Link href="/admin/quotes">Quản lý Báo giá</Link>, '/admin/quotes', <FormOutlined />),
+    getItem('Quản lý Nội dung', 'cms', <AppstoreOutlined />, [
+      getItem(<Link href="/admin/services">Dịch vụ</Link>, '/admin/services'),
+      getItem(<Link href="/admin/news">Tin tức</Link>, '/admin/news'),
+    ]),
+    getItem(<Link href="/admin/careers">Quản lý Tuyển dụng</Link>, '/admin/careers', <ReadOutlined />),
+    getItem(<Link href="/admin/users">Quản lý Người dùng</Link>, '/admin/users', <UserOutlined />),
+  ];
 
   return (
     <Sider width={280} theme="light" collapsible>
@@ -43,23 +57,8 @@ export function AdminSidebar() {
         selectedKeys={[pathname]}
         defaultOpenKeys={['cms']}
         style={{ height: 'calc(100% - 64px)', borderRight: 0 }}
-      >
-        {accessibleMenuItems.map((item) =>
-          item.children ? (
-            <Menu.SubMenu key={item.key} icon={item.icon} title={item.label}>
-              {item.children.map((child) => (
-                <Menu.Item key={child.key}>
-                  <Link href={child.key}>{child.label}</Link>
-                </Menu.Item>
-              ))}
-            </Menu.SubMenu>
-          ) : (
-            <Menu.Item key={item.key} icon={item.icon}>
-              <Link href={item.key}>{item.label}</Link>
-            </Menu.Item>
-          )
-        )}
-      </Menu>
+        items={items} // <-- Sử dụng prop `items` thay vì children
+      />
     </Sider>
   );
 }

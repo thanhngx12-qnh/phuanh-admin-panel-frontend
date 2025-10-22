@@ -21,22 +21,23 @@ export default function AdminLayout({
   const isHydrated = useAuthStore((state) => state.isHydrated);
 
   useEffect(() => {
-    // Chỉ kiểm tra sau khi store đã được khôi phục từ localStorage
     if (isHydrated && !token) {
       router.replace('/login');
     }
   }, [isHydrated, token, router]);
 
-  // Hiển thị loading cho đến khi chắc chắn về trạng thái xác thực
   if (!isHydrated || !token) {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <Spin size="large" tip="Đang xác thực..." />
+        {/* --- SỬA LỖI CẢNH BÁO CỦA SPIN --- */}
+        {/* Bọc một div trống bên trong Spin để kích hoạt "nest pattern" */}
+        <Spin size="large" tip="Đang xác thực...">
+          <div style={{ padding: 50, background: 'rgba(0, 0, 0, 0.05)', borderRadius: 4 }} />
+        </Spin>
       </div>
     );
   }
 
-  // Nếu đã xác thực, hiển thị layout chính
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <AdminSidebar />

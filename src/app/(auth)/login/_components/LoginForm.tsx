@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Form, Input, Button, Checkbox, Typography, notification } from 'antd';
+import { App, Card, Form, Input, Button, Checkbox, Typography } from 'antd';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useAuthStore, User } from '@/stores/authStore';
 import { siteConfig } from '@/configs/site';
@@ -15,14 +15,17 @@ type LoginFormData = {
   remember: boolean;
 };
 
+// --- SỬA LỖI Ở ĐÂY ---
+// Sửa lại type để khớp với response của backend
 type LoginResponse = {
-  accessToken: string;
+  access_token: string; // <-- Đã sửa thành snake_case
 };
 
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
+  const { notification } = App.useApp();
 
   const onFinish = async (values: LoginFormData) => {
     setLoading(true);
@@ -32,13 +35,20 @@ export function LoginForm() {
         email: values.email,
         password: values.password,
       });
-      const { accessToken } = loginRes.data.data;
+      
+      // --- SỬA LỖI Ở ĐÂY ---
+      // Đọc đúng key 'access_token' từ response
+      const { access_token } = loginRes.data.data;
 
-      // 2. Cập nhật token vào store -> localStorage sẽ được cập nhật
-      useAuthStore.setState({ token: accessToken });
+      // 2. Cập nhật token vào store
+      useAuthStore.setState({ token: access_token });
 
-      // 3. Lấy thông tin user (interceptor sẽ tự động dùng token mới)
-      const profileRes = await api.get<BackendResponse<User>>('/auth/profile');
+      // 3. Lấy thông tin user, truyền header thủ công
+      const profileRes = await api.get<BackendResponse<User>>('/auth/profile', {
+        headers: {
+          Authorization: `Bearer ${access_token}`, // <-- Sử dụng biến đã sửa
+        },
+      });
       const userProfile = profileRes.data.data;
 
       // 4. Cập nhật thông tin user vào store
@@ -50,7 +60,6 @@ export function LoginForm() {
         placement: 'topRight',
       });
       
-      // 5. Chuyển hướng đến trang Dashboard
       router.push('/admin');
 
     } catch (error: unknown) {
@@ -69,6 +78,7 @@ export function LoginForm() {
     }
   };
 
+  // JSX không thay đổi
   return (
     <Card title={<Typography.Title level={3} style={{ textAlign: 'center', margin: 0 }}>{siteConfig.defaultTitle}</Typography.Title>} style={{ width: 400 }}>
       <Form name="admin_login" initialValues={{ remember: true }} onFinish={onFinish} size="large">
