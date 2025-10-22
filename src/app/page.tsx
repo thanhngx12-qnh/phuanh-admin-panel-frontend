@@ -1,11 +1,21 @@
-// admin-panel-frontend/src/app/page.tsx
-import { Button } from 'antd'; // Import Button để test
+// src/app/(admin)/page.tsx
+'use client';
 
-export default function Home() {
+import { Typography } from 'antd';
+import { useAuthStore } from '@/stores/authStore';
+
+export default function DashboardPage() {
+  const user = useAuthStore((state) => state.user);
+
   return (
-    <main style={{ padding: '20px' }}>
-      <h1>Welcome to Admin Panel</h1>
-      <Button type="primary">Test Ant Design Button</Button>
-    </main>
+    <div>
+      <Typography.Title level={2}>Chào mừng đến với Dashboard</Typography.Title>
+      <Typography.Paragraph>
+        Xin chào, <strong>{user?.fullName || 'Quản trị viên'}</strong>!
+      </Typography.Paragraph>
+      <Typography.Paragraph>
+        Đây là trang quản trị của hệ thống. Bạn có thể bắt đầu bằng cách chọn một mục từ thanh điều hướng bên trái.
+      </Typography.Paragraph>
+    </div>
   );
 }

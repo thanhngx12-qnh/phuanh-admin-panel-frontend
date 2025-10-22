@@ -1,4 +1,4 @@
-// src/app/(admin)/page.tsx
+// src/app/(admin)/admin/page.tsx
 'use client';
 
 import { Typography } from 'antd';

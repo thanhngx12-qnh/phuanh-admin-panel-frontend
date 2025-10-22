@@ -1,8 +1,7 @@
 // admin-panel-frontend/src/lib/axios.ts
 import axios, { AxiosResponse } from 'axios';
+import { useAuthStore } from '@/stores/authStore'; // Import store
 
-// Định nghĩa cấu trúc response chung từ backend của bạn
-// Chúng ta sẽ export nó để có thể dùng ở nơi khác
 export interface BackendResponse<T> {
   statusCode: number;
   message: string;
@@ -16,9 +15,17 @@ const api = axios.create({
   },
 });
 
+// --- SỬA LẠI TRIỆT ĐỂ INTERCEPTOR REQUEST ---
 api.interceptors.request.use(
   (config) => {
-    // TODO: Thêm logic lấy token từ Zustand
+    // Lấy token trực tiếp từ Zustand store mà không cần hook
+    // Đây là cách an toàn để truy cập store bên ngoài component React
+    const token = useAuthStore.getState().token;
+
+    // Nếu có token, đính kèm vào header Authorization
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -27,8 +34,6 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  // --- SỬA LẠI TRIỆT ĐỂ ---
-  // Chỉ trả về nguyên gốc response, không "bóc" bất cứ thứ gì.
   (response: AxiosResponse) => response,
   (error) => {
     const errorMessage = error.response?.data?.message || error.message;

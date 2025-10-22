@@ -1,4 +1,4 @@
-// admin-panel-frontend/src/app/layout.tsx
+// src/app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
@@ -7,7 +7,7 @@ import theme from '@/configs/theme';
 import AntdRegistry from '@/lib/AntdRegistry';
 import React from 'react';
 import { siteConfig } from '@/configs/site';
-import { AppProvider } from '@/providers/AppProvider'; // <-- Import AppProvider
+import { AppProvider } from '@/providers/AppProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,7 +28,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        {/* Bọc toàn bộ bằng AppProvider để cung cấp React Query context */}
         <AppProvider>
           <AntdRegistry>
             <ConfigProvider theme={theme} wave={{ disabled: true }}>

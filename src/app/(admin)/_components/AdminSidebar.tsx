@@ -3,22 +3,14 @@
 
 import React from 'react';
 import { Layout, Menu } from 'antd';
-import {
-  DashboardOutlined,
-  TruckOutlined,
-  FormOutlined,
-  AppstoreOutlined,
-  ReadOutlined,
-  TeamOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+import { DashboardOutlined, TruckOutlined, FormOutlined, AppstoreOutlined, ReadOutlined, UserOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { siteConfig } from '@/configs/site';
 
 const { Sider } = Layout;
 
-// TODO: Sau này, danh sách menu này sẽ được tạo động dựa trên vai trò của người dùng
+// TODO: Logic filter menu theo role sẽ được thêm sau
 const menuItems = [
   { key: '/admin', icon: <DashboardOutlined />, label: 'Dashboard', roles: ['ADMIN', 'CONTENT_MANAGER', 'SALES', 'OPS'] },
   { key: '/admin/consignments', icon: <TruckOutlined />, label: 'Quản lý Vận đơn', roles: ['ADMIN', 'OPS'] },
@@ -39,9 +31,7 @@ const menuItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
-
-  // Logic để tạo menu items động dựa trên vai trò sẽ được thêm vào đây
-  const accessibleMenuItems = menuItems; // Tạm thời hiển thị tất cả
+  const accessibleMenuItems = menuItems;
 
   return (
     <Sider width={280} theme="light" collapsible>
@@ -51,7 +41,7 @@ export function AdminSidebar() {
       <Menu
         mode="inline"
         selectedKeys={[pathname]}
-        defaultOpenKeys={['cms']} // Mở sẵn nhóm 'Quản lý Nội dung'
+        defaultOpenKeys={['cms']}
         style={{ height: 'calc(100% - 64px)', borderRight: 0 }}
       >
         {accessibleMenuItems.map((item) =>

@@ -17,35 +17,26 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  
-  // --- SỬA LỖI VÒNG LẶP VÔ HẠN ---
-  // Lấy từng giá trị riêng lẻ để tránh tạo object mới mỗi lần render.
   const token = useAuthStore((state) => state.token);
   const isHydrated = useAuthStore((state) => state.isHydrated);
 
   useEffect(() => {
+    // Chỉ kiểm tra sau khi store đã được khôi phục từ localStorage
     if (isHydrated && !token) {
       router.replace('/login');
     }
   }, [isHydrated, token, router]);
 
-  // Nếu store chưa được khôi phục, hiển thị màn hình loading toàn trang
-  if (!isHydrated) {
+  // Hiển thị loading cho đến khi chắc chắn về trạng thái xác thực
+  if (!isHydrated || !token) {
     return (
-      // --- SỬA LỖI CẢNH BÁO CỦA SPIN ---
-      // Đặt Spin vào một container để nó có thể chiếm toàn màn hình
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(255, 255, 255, 0.7)' }}>
-        <Spin size="large"/>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <Spin size="large" tip="Đang xác thực..." />
       </div>
     );
   }
-  
-  // Nếu đã khôi phục và không có token, trả về null để chờ useEffect chuyển hướng
-  if (!token) {
-    return null;
-  }
 
-  // Nếu có token, hiển thị layout chính
+  // Nếu đã xác thực, hiển thị layout chính
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <AdminSidebar />
