@@ -2,50 +2,67 @@
 'use client';
 
 import React from 'react';
-import { Layout, Menu, MenuProps } from 'antd';
+import { Layout, Menu } from 'antd';
+import type { MenuProps } from 'antd';
 import { DashboardOutlined, TruckOutlined, FormOutlined, AppstoreOutlined, ReadOutlined, UserOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { siteConfig } from '@/configs/site';
-import { useAuthStore } from '@/stores/authStore';
 
 const { Sider } = Layout;
 
-// --- SỬA LỖI DEPRECATED WARNING ---
-// Định nghĩa kiểu cho một mục menu để dễ quản lý
-type MenuItem = Required<MenuProps>['items'][number];
+// --- SỬA LỖI Ở ĐÂY: Lọc ra các giá trị có thể là null/undefined ---
+// Định nghĩa một kiểu chặt chẽ hơn, không bao giờ là null hoặc undefined
+type NonNullableMenuItem = NonNullable<MenuProps['items']>[number];
 
-// Hàm helper để tạo một mục menu
 function getItem(
   label: React.ReactNode,
   key: React.Key,
   icon?: React.ReactNode,
-  children?: MenuItem[],
-): MenuItem {
+  children?: NonNullableMenuItem[],
+  type?: 'group',
+): NonNullableMenuItem {
   return {
     key,
     icon,
     children,
     label,
-  } as MenuItem;
+    type,
+  } as NonNullableMenuItem;
 }
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const user = useAuthStore((state) => state.user);
 
-  // TODO: Logic filter menu theo role sẽ được hoàn thiện sau
-  const items: MenuItem[] = [
+  const items: NonNullableMenuItem[] = [
     getItem(<Link href="/admin">Dashboard</Link>, '/admin', <DashboardOutlined />),
-    getItem(<Link href="/admin/consignments">Quản lý Vận đơn</Link>, '/admin/consignments', <TruckOutlined />),
-    getItem(<Link href="/admin/quotes">Quản lý Báo giá</Link>, '/admin/quotes', <FormOutlined />),
+    getItem(<Link href="/consignments">Quản lý Vận đơn</Link>, '/consignments', <TruckOutlined />),
+    getItem(<Link href="/quotes">Quản lý Báo giá</Link>, '/quotes', <FormOutlined />),
     getItem('Quản lý Nội dung', 'cms', <AppstoreOutlined />, [
-      getItem(<Link href="/admin/services">Dịch vụ</Link>, '/admin/services'),
-      getItem(<Link href="/admin/news">Tin tức</Link>, '/admin/news'),
+      getItem(<Link href="/services">Dịch vụ</Link>, '/services'),
+      getItem(<Link href="/news">Tin tức</Link>, '/news'),
     ]),
-    getItem(<Link href="/admin/careers">Quản lý Tuyển dụng</Link>, '/admin/careers', <ReadOutlined />),
-    getItem(<Link href="/admin/users">Quản lý Người dùng</Link>, '/admin/users', <UserOutlined />),
+    getItem(<Link href="/careers">Quản lý Tuyển dụng</Link>, '/careers', <ReadOutlined />),
+    getItem(<Link href="/users">Quản lý Người dùng</Link>, '/users', <UserOutlined />),
   ];
+
+  const findParentMenuKey = (menuItems: NonNullableMenuItem[], currentPath: string): React.Key | undefined => {
+    for (const item of menuItems) {
+      // Thêm một bước kiểm tra `item` để chắc chắn
+      if (item && 'children' in item && item.children) {
+        // ép kiểu `item.children` về đúng dạng mảng để .some() hoạt động
+        const hasActiveChild = (item.children as NonNullableMenuItem[]).some(
+          (child) => child && child.key === currentPath
+        );
+        if (hasActiveChild) {
+          return item.key;
+        }
+      }
+    }
+    return undefined;
+  };
+  
+  const openKeys = findParentMenuKey(items, pathname);
 
   return (
     <Sider width={280} theme="light" collapsible>
@@ -55,9 +72,9 @@ export function AdminSidebar() {
       <Menu
         mode="inline"
         selectedKeys={[pathname]}
-        defaultOpenKeys={['cms']}
+        defaultOpenKeys={openKeys ? [openKeys.toString()] : []}
         style={{ height: 'calc(100% - 64px)', borderRight: 0 }}
-        items={items} // <-- Sử dụng prop `items` thay vì children
+        items={items}
       />
     </Sider>
   );

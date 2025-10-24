@@ -30,3 +30,25 @@ export interface PaginatedResponse<T> {
   limit: number;
   lastPage: number;
 }
+
+// --- THÊM CÁC TYPE TẠM THỜI ĐỂ TEST ---
+// Cấu trúc một bản dịch của tin tức
+interface NewsTranslation {
+  locale: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+}
+
+// Cấu trúc của một bài viết tin tức trả về từ API /news/all
+export interface NewsArticle {
+  id: number;
+  coverImage: string | null;
+  status: 'DRAFT' | 'PUBLISHED';
+  featured: boolean;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  translations: NewsTranslation[];
+}
