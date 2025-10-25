@@ -52,3 +52,25 @@ export interface NewsArticle {
   updatedAt: string;
   translations: NewsTranslation[];
 }
+
+export interface ServiceInfo {
+  id: number;
+  translations: {
+    locale: string;
+    title: string;
+  }[];
+}
+
+// Cấu trúc cho một Yêu cầu Báo giá
+export interface Quote {
+  id: number;
+  customerName: string;
+  email: string;
+  phone: string;
+  details: string;
+  status: string;
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+  service: ServiceInfo; // Lồng thông tin dịch vụ
+}
