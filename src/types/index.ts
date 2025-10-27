@@ -16,7 +16,6 @@ export interface Consignment {
   origin: string;
   destination: string;
   status: string;
-  // --- SỬA LỖI Ở ĐÂY: any -> unknown ---
   metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -31,28 +30,6 @@ export interface PaginatedResponse<T> {
   lastPage: number;
 }
 
-// --- THÊM CÁC TYPE TẠM THỜI ĐỂ TEST ---
-// Cấu trúc một bản dịch của tin tức
-interface NewsTranslation {
-  locale: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string;
-}
-
-// Cấu trúc của một bài viết tin tức trả về từ API /news/all
-export interface NewsArticle {
-  id: number;
-  coverImage: string | null;
-  status: 'DRAFT' | 'PUBLISHED';
-  featured: boolean;
-  publishedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  translations: NewsTranslation[];
-}
-
 export interface ServiceInfo {
   id: number;
   translations: {
@@ -61,7 +38,6 @@ export interface ServiceInfo {
   }[];
 }
 
-// Cấu trúc cho một Yêu cầu Báo giá
 export interface Quote {
   id: number;
   customerName: string;
@@ -72,5 +48,38 @@ export interface Quote {
   adminNotes?: string;
   createdAt: string;
   updatedAt: string;
-  service: ServiceInfo; // Lồng thông tin dịch vụ
+  service: ServiceInfo | null;
+}
+
+// --- THÊM INTERFACE CÒN THIẾU Ở ĐÂY ---
+export interface Translation {
+  locale: 'vi' | 'en' | 'zh';
+  title: string;
+  slug: string;
+  // Các trường này có thể có hoặc không tùy vào model (News/Service)
+  content?: string;
+  shortDesc?: string;
+  excerpt?: string;
+}
+
+export interface Service {
+  id: number;
+  code: string;
+  category: string;
+  coverImage: string;
+  featured: boolean;
+  createdAt: string;
+  updatedAt: string;
+  translations: Translation[];
+}
+
+export interface News {
+  id: number;
+  coverImage: string;
+  status: 'DRAFT' | 'PUBLISHED';
+  featured: boolean;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  translations: Translation[];
 }
