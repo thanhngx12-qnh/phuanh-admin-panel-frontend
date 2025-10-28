@@ -8,6 +8,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import api, { BackendResponse } from '@/lib/axios';
 import { News, Translation } from '@/types';
+import { ImageUpload } from '@/components/ImageUpload'; // <-- Import
+import { Editor } from '@/components/Editor';    
 
 interface NewsFormDrawerProps {
   open: boolean;
@@ -151,9 +153,16 @@ export function NewsFormDrawer({ open, onClose, newsId }: NewsFormDrawerProps) {
           <Form.Item label="Ngày xuất bản" name="publishedAt">
             <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: '100%' }}/>
           </Form.Item>
-          <Form.Item label="Ảnh bìa">
-            <Typography.Text type="secondary">Chức năng upload sẽ được thêm ở bước sau.</Typography.Text>
+          <Form.Item
+            label="Ảnh bìa"
+            name="coverImage"
+            rules={[{ required: true, message: 'Vui lòng upload ảnh bìa!' }]}
+            // Thêm validateTrigger để kiểm tra lại khi người dùng click ra ngoài
+            validateTrigger="onBlur" 
+          >
+            <ImageUpload />
           </Form.Item>
+
           
           <Tabs defaultActiveKey="vi">
             {languageTabs.map(tab => (
@@ -167,9 +176,8 @@ export function NewsFormDrawer({ open, onClose, newsId }: NewsFormDrawerProps) {
                 <Form.Item label="Đoạn trích (Excerpt)" name={['translations', tab.key, 'excerpt']}>
                   <Input.TextArea rows={3} />
                 </Form.Item>
-                {/* --- SỬA LỖI Ở ĐÂY: Thêm 'name' cho Form.Item --- */}
                 <Form.Item label="Nội dung chi tiết" name={['translations', tab.key, 'content']}>
-                  <Input.TextArea rows={10} placeholder="Trình soạn thảo sẽ được thêm ở bước sau."/>
+                  <Editor />
                 </Form.Item>
               </Tabs.TabPane>
             ))}
