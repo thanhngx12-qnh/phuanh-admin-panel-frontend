@@ -83,3 +83,12 @@ export interface News {
   updatedAt: string;
   translations: Translation[];
 }
+
+export interface User {
+  id: number;
+  email: string;
+  fullName: string;
+  role: 'ADMIN' | 'CONTENT_MANAGER' | 'SALES' | 'OPS';
+  createdAt: string;
+  updatedAt: string;
+}
