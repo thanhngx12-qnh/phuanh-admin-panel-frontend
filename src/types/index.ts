@@ -92,3 +92,27 @@ export interface User {
   createdAt: string;
   updatedAt: string;
 }
+
+export type JobStatus = 'OPEN' | 'CLOSED';
+
+export interface JobPosting {
+  id: number;
+  title: string;
+  location: string;
+  description: string;
+  requirements: string;
+  status: JobStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobApplication {
+  id: number;
+  applicantName: string;
+  email: string;
+  phone: string;
+  coverLetter?: string;
+  cvPath: string; // URL để tải CV
+  appliedAt: string;
+  jobPosting: JobPosting | null; // Có thể null nếu tin tuyển dụng đã bị xóa
+}
