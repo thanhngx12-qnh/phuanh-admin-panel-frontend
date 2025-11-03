@@ -1,21 +1,33 @@
 // src/app/(admin)/admin/page.tsx
 'use client';
 
-import { Typography } from 'antd';
-import { useAuthStore } from '@/stores/authStore';
+import React from 'react';
+import { Col, Row, Space, Typography } from 'antd';
+import { StatCards } from './_components/StatCards';
+import { TimeSeriesChart } from './_components/TimeSeriesChart';
+import { CategoricalChart } from './_components/CategoricalChart';
+import { RecentActivities } from './_components/RecentActivities';
 
 export default function DashboardPage() {
-  const user = useAuthStore((state) => state.user);
-
   return (
-    <div>
-      <Typography.Title level={2}>Chào mừng đến với Dashboard</Typography.Title>
-      <Typography.Paragraph>
-        Xin chào, <strong>{user?.fullName || 'Quản trị viên'}</strong>!
-      </Typography.Paragraph>
-      <Typography.Paragraph>
-        Đây là trang quản trị của hệ thống. Bạn có thể bắt đầu bằng cách chọn một mục từ thanh điều hướng bên trái.
-      </Typography.Paragraph>
-    </div>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Typography.Title level={2}>Tổng quan</Typography.Title>
+      
+      {/* Hàng 1: Các thẻ thống kê KPI */}
+      <StatCards />
+
+      {/* Hàng 2: Biểu đồ */}
+      <Row gutter={16}>
+        <Col span={16}>
+          <TimeSeriesChart />
+        </Col>
+        <Col span={8}>
+          <CategoricalChart />
+        </Col>
+      </Row>
+
+      {/* Hàng 3: Bảng hoạt động gần đây */}
+      <RecentActivities />
+    </Space>
   );
 }
