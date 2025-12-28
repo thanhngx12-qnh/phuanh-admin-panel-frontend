@@ -84,11 +84,13 @@ export interface News {
   translations: Translation[];
 }
 
+export type UserRole = 'ADMIN' | 'CONTENT_MANAGER' | 'SALES' | 'OPS';
+
 export interface User {
   id: number;
   email: string;
   fullName: string;
-  role: 'ADMIN' | 'CONTENT_MANAGER' | 'SALES' | 'OPS';
+  role: UserRole;
   createdAt: string;
   updatedAt: string;
 }

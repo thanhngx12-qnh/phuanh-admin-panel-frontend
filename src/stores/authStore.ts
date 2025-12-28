@@ -1,27 +1,16 @@
-// admin-panel-frontend/src/stores/authStore.ts
+// File: src/stores/authStore.ts
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { User } from '@/types'; // Import User từ file types chung
 
-// --- 1. Định nghĩa Types (Data Contract) ---
-// Định nghĩa các vai trò người dùng để đảm bảo nhất quán
-export type UserRole = 'ADMIN' | 'CONTENT_MANAGER' | 'SALES' | 'OPS';
-
-// Định nghĩa cấu trúc của đối tượng User
-export interface User {
-  id: number;
-  email: string;
-  fullName: string;
-  role: UserRole;
-}
-
-// Định nghĩa trạng thái của store
+// State definition
 interface AuthState {
   user: User | null;
   token: string | null;
-  isHydrated: boolean; // Trạng thái để biết store đã được load từ localStorage hay chưa
+  isHydrated: boolean;
 }
 
-// Định nghĩa các hành động (actions) có thể thực hiện trên store
+// Action definition
 interface AuthActions {
   login: (user: User, token: string) => void;
   logout: () => void;
@@ -29,49 +18,35 @@ interface AuthActions {
   setHydrated: () => void;
 }
 
-// --- 2. Tạo Store với Middleware `persist` ---
 export const useAuthStore = create<AuthState & AuthActions>()(
   persist(
-    (set, get) => ({
-      // --- State mặc định ---
+    (set) => ({
       user: null,
       token: null,
       isHydrated: false,
 
-      // --- Actions ---
-      login: (user, token) => {
-        set({ user, token });
-      },
-
+      login: (user, token) => set({ user, token }),
+      
       logout: () => {
-        // Xóa thông tin user và token khỏi state
+        // Xóa sạch storage
+        localStorage.removeItem('auth-storage'); 
         set({ user: null, token: null });
       },
 
-      setUser: (user) => {
-        set({ user });
-      },
-
-      setHydrated: () => {
-        set({ isHydrated: true });
-      }
+      setUser: (user) => set({ user }),
+      
+      setHydrated: () => set({ isHydrated: true }),
     }),
     {
-      // --- Cấu hình cho Middleware `persist` ---
-      name: 'auth-storage', // Tên của key trong localStorage
-      storage: createJSONStorage(() => localStorage), // Chỉ định sử dụng localStorage
-
-      // Chỉ lưu trữ `token` vào localStorage.
-      // Không lưu `user` vì thông tin user có thể thay đổi và nên được fetch lại khi cần.
-      partialize: (state) => ({ token: state.token }),
-
-      // Hàm này sẽ được gọi sau khi state được load từ localStorage.
-      // Chúng ta dùng nó để cập nhật cờ `isHydrated`.
+      name: 'auth-storage', // Key trong localStorage
+      storage: createJSONStorage(() => localStorage),
+      // Chỉ persist token, user info nên fetch lại hoặc persist tùy nhu cầu
+      // Ở đây ta persist cả 2 để UX tốt hơn (không bị flash loading user info)
+      partialize: (state) => ({ token: state.token, user: state.user }),
+      
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.setHydrated();
-        }
-      }
+        state?.setHydrated();
+      },
     }
   )
 );

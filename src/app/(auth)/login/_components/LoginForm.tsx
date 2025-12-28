@@ -5,7 +5,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { App, Card, Form, Input, Button, Checkbox, Typography } from 'antd';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
-import { useAuthStore, User } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
+import { User } from '@/types';
 import { siteConfig } from '@/configs/site';
 import api, { BackendResponse } from '@/lib/axios';
 

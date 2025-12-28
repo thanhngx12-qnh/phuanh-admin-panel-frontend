@@ -1,23 +1,12 @@
-// admin-panel-frontend/src/lib/AntdRegistry.tsx
+// File: src/lib/AntdRegistry.tsx
 'use client';
 
 import React from 'react';
-import { createCache, extractStyle, StyleProvider } from '@ant-design/cssinjs';
-import type Entity from '@ant-design/cssinjs/es/Cache';
-import { useServerInsertedHTML } from 'next/navigation';
+import { AntdRegistry } from '@ant-design/nextjs-registry';
 
-const StyledComponentsRegistry = ({ children }: React.PropsWithChildren) => {
-  const cache = React.useMemo<Entity>(() => createCache(), []);
-  const isServerInserted = React.useRef<boolean>(false);
-  useServerInsertedHTML(() => {
-    // avoid duplicate css insert
-    if (isServerInserted.current) {
-      return;
-    }
-    isServerInserted.current = true;
-    return <style id="antd" dangerouslySetInnerHTML={{ __html: extractStyle(cache, true) }} />;
-  });
-  return <StyleProvider cache={cache}>{children}</StyleProvider>;
+// Wrapper component sử dụng thư viện chính thức của Ant Design cho Next.js 14
+const StyledComponentsRegistry = ({ children }: { children: React.ReactNode }) => {
+  return <AntdRegistry>{children}</AntdRegistry>;
 };
 
 export default StyledComponentsRegistry;
