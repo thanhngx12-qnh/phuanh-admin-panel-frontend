@@ -2,8 +2,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  
-  // Có thể thêm cấu hình images nếu Admin Panel cần hiển thị ảnh từ Cloudinary
   images: {
     remotePatterns: [
       {
@@ -11,7 +9,8 @@ const nextConfig = {
         hostname: 'res.cloudinary.com',
       },
     ],
+    unoptimized: true,  // Thêm dòng này
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
