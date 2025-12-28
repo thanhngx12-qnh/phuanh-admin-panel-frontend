@@ -3,7 +3,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // output: 'standalone', // Giữ lại nếu bạn muốn dùng cho Docker
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+    ],
+    // Thêm dòng này để tắt hoàn toàn sharp trong build
+    unoptimized: true,
+  },
 };
 
 module.exports = nextConfig;
