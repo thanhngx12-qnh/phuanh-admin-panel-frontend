@@ -10,8 +10,7 @@ const nextConfig = {
         hostname: 'res.cloudinary.com',
       },
     ],
-    // Thêm dòng này để tắt hoàn toàn sharp trong build
-    unoptimized: true,
+    unoptimized: true,  // Thêm dòng này
   },
 };
 
