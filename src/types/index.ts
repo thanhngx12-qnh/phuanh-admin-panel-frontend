@@ -1,5 +1,4 @@
-// src/types/index.ts
-
+// ~dir: src/types/index.ts
 export interface TrackingEvent {
   id: number;
   timestamp: string;
@@ -30,6 +29,71 @@ export interface PaginatedResponse<T> {
   lastPage: number;
 }
 
+/**
+ * Interface cho Danh mục (Mới cập nhật)
+ */
+
+export type CategoryType = 'NEWS' | 'SERVICE';
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  type: 'NEWS' | 'SERVICE';
+  description?: string;
+  parentId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Interface cho Bản dịch (Cập nhật các trường SEO)
+ */
+export interface Translation {
+  locale: string; // 'vi' | 'en' | 'zh' ...
+  title: string;
+  slug: string;
+  content?: string;
+  shortDesc?: string; // Dùng cho Service
+  excerpt?: string;   // Dùng cho News
+  
+  // --- CÁC TRƯỜNG SEO MỚI ---
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
+  ogImage?: string;
+}
+
+/**
+ * Interface cho Dịch vụ (Cập nhật quan hệ Category)
+ */
+export interface Service {
+  id: number;
+  code: string;
+  categoryId?: number; // ID liên kết
+  category?: Category; // Object danh mục đính kèm
+  coverImage: string;
+  featured: boolean;
+  createdAt: string;
+  updatedAt: string;
+  translations: Translation[];
+}
+
+/**
+ * Interface cho Tin tức (Cập nhật quan hệ Category)
+ */
+export interface News {
+  id: number;
+  coverImage: string;
+  status: 'DRAFT' | 'PUBLISHED';
+  featured: boolean;
+  categoryId?: number; // ID liên kết
+  category?: Category; // Object danh mục đính kèm
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  translations: Translation[];
+}
+
 export interface ServiceInfo {
   id: number;
   translations: {
@@ -49,39 +113,6 @@ export interface Quote {
   createdAt: string;
   updatedAt: string;
   service: ServiceInfo | null;
-}
-
-// --- THÊM INTERFACE CÒN THIẾU Ở ĐÂY ---
-export interface Translation {
-  locale: 'vi' | 'en' | 'zh';
-  title: string;
-  slug: string;
-  // Các trường này có thể có hoặc không tùy vào model (News/Service)
-  content?: string;
-  shortDesc?: string;
-  excerpt?: string;
-}
-
-export interface Service {
-  id: number;
-  code: string;
-  category: string;
-  coverImage: string;
-  featured: boolean;
-  createdAt: string;
-  updatedAt: string;
-  translations: Translation[];
-}
-
-export interface News {
-  id: number;
-  coverImage: string;
-  status: 'DRAFT' | 'PUBLISHED';
-  featured: boolean;
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  translations: Translation[];
 }
 
 export type UserRole = 'ADMIN' | 'CONTENT_MANAGER' | 'SALES' | 'OPS';
@@ -114,7 +145,7 @@ export interface JobApplication {
   email: string;
   phone: string;
   coverLetter?: string;
-  cvPath: string; // URL để tải CV
+  cvPath: string; 
   appliedAt: string;
-  jobPosting: JobPosting | null; // Có thể null nếu tin tuyển dụng đã bị xóa
+  jobPosting: JobPosting | null;
 }

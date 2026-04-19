@@ -1,12 +1,12 @@
 // dir: frontend/src/app/(admin)/services/_components/ServiceFormDrawer.tsx
 'use client';
 
-import React, { useEffect } from 'react';
-import { App, Button, Drawer, Form, Input, Select, Space, Spin, Switch, Tabs, Typography, Tooltip } from 'antd';
-import { MessageOutlined, AppstoreOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
+import { App, Button, Drawer, Form, Input, Select, Space, Spin, Switch, Tabs, Typography, Tooltip, Card, Flex, Collapse } from 'antd';
+import { MessageOutlined, AppstoreOutlined, GlobalOutlined, FullscreenOutlined, FullscreenExitOutlined, DownOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { BackendResponse } from '@/lib/axios';
-import { Service, Translation } from '@/types';
+import { Service, Translation, Category } from '@/types';
 import { ImageUpload } from '@/components/ImageUpload';
 import { Editor } from '@/components/Editor';
 
@@ -22,22 +22,31 @@ type ServiceFormData = Omit<Service, 'id' | 'createdAt' | 'updatedAt' | 'transla
   };
 };
 
-// --- HÀM TẠO SLUG TỰ ĐỘNG ---
 const toSlug = (str: string) => {
   if (!str) return '';
-  str = str.toLowerCase();
-  str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  str = str.replace(/[đĐ]/g, 'd');
-  str = str.replace(/([^0-9a-z-\s])/g, '');
-  str = str.replace(/(\s+)/g, '-');
-  str = str.replace(/-+/g, '-');
-  str = str.replace(/^-+|-+$/g, '');
+  str = str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').replace(/([^0-9a-z-\s])/g, '').replace(/(\s+)/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
   return str;
 };
 
 const fetchServiceById = async (id: number): Promise<Service> => {
   const response = await api.get<BackendResponse<Service>>(`/admin/services/${id}`);
   return response.data.data;
+};
+
+// --- HÀM LẤY DANH MỤC DỊCH VỤ (Đã fix lỗi map) ---
+const fetchServiceCategories = async (): Promise<Category[]> => {
+  try {
+    const response = await api.get<BackendResponse<Category[] | {data: Category[]}>>('/admin/categories?type=SERVICE');
+    const result = response.data.data;
+    if (Array.isArray(result)) return result;
+    if (result && typeof result === 'object' && 'data' in result && Array.isArray((result as any).data)) {
+      return (result as any).data;
+    }
+    return [];
+  } catch (error) {
+    console.error("Fetch categories failed:", error);
+    return [];
+  }
 };
 
 type ApiData = Omit<ServiceFormData, 'translations'> & {
@@ -59,22 +68,29 @@ export function ServiceFormDrawer({ open, onClose, serviceId }: ServiceFormDrawe
   const { notification } = App.useApp();
   const queryClient = useQueryClient();
   const isEditMode = !!serviceId;
+  const [isFullWidth, setIsFullWidth] = useState(false);
 
-  // --- LOGIC TẠO SLUG TỰ ĐỘNG ---
-  const generateSlugForLocale = (locale: string) => {
+  const handleAutoGenerateSlug = (locale: string) => {
     const title = form.getFieldValue(['translations', locale, 'title']);
     if (!title) {
-      notification.warning({ message: 'Vui lòng nhập Tên dịch vụ trước khi tạo URL!' });
+      notification.warning({ message: 'Vui lòng nhập Tên dịch vụ trước!' });
       return;
     }
     form.setFieldValue(['translations', locale, 'slug'], toSlug(title));
-    notification.info({ message: 'Đã tạo URL chuẩn SEO cho ' + locale.toUpperCase() });
+    notification.info({ message: 'Đã tạo URL chuẩn SEO' });
   };
 
-  const { data: editingService, isLoading } = useQuery({
+  const { data: editingService, isLoading: isLoadingService } = useQuery({
     queryKey: ['services', serviceId],
     queryFn: () => fetchServiceById(serviceId!),
     enabled: isEditMode && open,
+  });
+
+  // --- ĐỒNG BỘ QUERY KEY VỚI TRANG DANH MỤC ---
+  const { data: categories, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['categories', 'list', { type: 'SERVICE' }],
+    queryFn: fetchServiceCategories,
+    enabled: open,
   });
 
   const createMutation = useMutation({
@@ -100,9 +116,7 @@ export function ServiceFormDrawer({ open, onClose, serviceId }: ServiceFormDrawe
   useEffect(() => {
     if (isEditMode && editingService) {
       const translationsForForm: { [key: string]: Partial<Translation> } = {};
-      editingService.translations.forEach(t => {
-        translationsForForm[t.locale] = t;
-      });
+      editingService.translations.forEach(t => { translationsForForm[t.locale] = t; });
       form.setFieldsValue({
         ...editingService,
         translations: translationsForForm,
@@ -120,110 +134,106 @@ export function ServiceFormDrawer({ open, onClose, serviceId }: ServiceFormDrawe
         .map(([locale, trans]) => ({ ...trans, locale: locale as 'vi' | 'en' | 'zh' }))
         .filter(t => t.title && t.title.trim() !== ''),
     };
-    
-    if (isEditMode) {
-      updateMutation.mutate({ id: serviceId!, data: apiData });
-    } else {
-      createMutation.mutate(apiData);
-    }
+    if (isEditMode) updateMutation.mutate({ id: serviceId!, data: apiData });
+    else createMutation.mutate(apiData);
   };
 
-  // --- CẤU HÌNH TABS HIỆN ĐẠI ---
-  const tabItems = [
-    { key: 'vi', label: 'Tiếng Việt (VI)' },
-    { key: 'en', label: 'Tiếng Anh (EN)' },
-    { key: 'zh', label: 'Tiếng Trung (ZH)' },
+  const contentTabItems = [
+    { key: 'vi', label: 'Tiếng Việt (VI)' }, { key: 'en', label: 'Tiếng Anh (EN)' }, { key: 'zh', label: 'Tiếng Trung (ZH)' },
   ].map(tab => ({
     key: tab.key,
     label: tab.label,
     children: (
-      <div style={{ padding: '16px 0' }}>
-        <Form.Item 
-          label={<Typography.Text strong>Tên Dịch vụ</Typography.Text>} 
-          name={['translations', tab.key, 'title']} 
-          rules={tab.key === 'vi' ? [{ required: true, message: 'Vui lòng nhập tên dịch vụ!' }] : []}
-        >
-          <Input maxLength={70} showCount placeholder="Ví dụ: Dịch vụ kho bãi tại Tà Lùng" />
+      <Space direction="vertical" size="middle" style={{ width: '100%', padding: '16px 0' }}>
+        <Form.Item label={<Typography.Text strong>Tên dịch vụ</Typography.Text>} name={['translations', tab.key, 'title']} rules={tab.key === 'vi' ? [{ required: true }] : []}>
+          <Input maxLength={70} showCount placeholder="VD: Dịch vụ kho bãi tại Tà Lùng" />
         </Form.Item>
-
-        <Form.Item 
-          label={<Typography.Text strong>Đường dẫn (URL Slug)</Typography.Text>}
-          required={tab.key === 'vi'}
-        >
+        <Form.Item label={<Typography.Text strong>Đường dẫn (URL Slug)</Typography.Text>} required={tab.key === 'vi'}>
           <Space.Compact style={{ width: '100%' }}>
-            <Form.Item
-              name={['translations', tab.key, 'slug']}
-              noStyle
-              rules={tab.key === 'vi' ? [{ required: true, message: 'URL không được để trống!' }] : []}
-            >
-              <Input placeholder="kho-bai-ta-lung" style={{ width: 'calc(100% - 120px)' }} />
+            <Form.Item name={['translations', tab.key, 'slug']} noStyle rules={tab.key === 'vi' ? [{ required: true }] : []}>
+              <Input placeholder="kho-bai-ta-lung" />
             </Form.Item>
-            <Tooltip title="Tạo tự động từ tên dịch vụ">
-              <Button icon={<MessageOutlined />} onClick={() => generateSlugForLocale(tab.key)} style={{ width: 120 }}>
-                Tạo URL
-              </Button>
-            </Tooltip>
+            <Tooltip title="Tạo tự động từ tên dịch vụ"><Button icon={<MessageOutlined />} onClick={() => handleAutoGenerateSlug(tab.key)}>Tạo URL</Button></Tooltip>
           </Space.Compact>
         </Form.Item>
-
-        <Form.Item 
-          label={<Typography.Text strong>Mô tả ngắn (Meta Description)</Typography.Text>} 
-          name={['translations', tab.key, 'shortDesc']}
-        >
-          <Input.TextArea rows={3} maxLength={160} showCount placeholder="Mô tả ngắn gọn để hiển thị trên Google..." />
+        <Form.Item label={<Typography.Text strong>Mô tả ngắn (Hiển thị ở trang danh sách)</Typography.Text>} name={['translations', tab.key, 'shortDesc']}>
+          <Input.TextArea rows={3} maxLength={160} showCount />
         </Form.Item>
-
-        <Form.Item label={<Typography.Text strong>Nội dung chi tiết (Trang đích)</Typography.Text>} name={['translations', tab.key, 'content']}>
+        <Form.Item label={<Typography.Text strong>Nội dung chi tiết (Landing Page)</Typography.Text>} name={['translations', tab.key, 'content']}>
           <Editor />
         </Form.Item>
-      </div>
+      </Space>
     )
   }));
+
+  const seoTabItems = [
+    { key: 'vi', label: 'SEO - VI' }, { key: 'en', label: 'SEO - EN' }, { key: 'zh', label: 'SEO - ZH' },
+  ].map(tab => ({
+    key: tab.key,
+    label: tab.label,
+    children: (
+      <Space direction="vertical" size="middle" style={{ width: '100%', padding: '16px 0' }}>
+        <Form.Item label="SEO Title" name={['translations', tab.key, 'metaTitle']} extra="Bỏ trống sẽ tự lấy Tên dịch vụ. Tối ưu: 60-70 ký tự.">
+          <Input maxLength={70} showCount />
+        </Form.Item>
+        <Form.Item label="Meta Description" name={['translations', tab.key, 'metaDescription']} extra="Bỏ trống sẽ tự lấy Mô tả ngắn. Tối ưu: 150-160 ký tự.">
+          <Input.TextArea rows={3} maxLength={160} showCount />
+        </Form.Item>
+        <Form.Item label="Meta Keywords" name={['translations', tab.key, 'metaKeywords']}>
+          <Input placeholder="kho bai, van tai, ta lung..." />
+        </Form.Item>
+        <Form.Item label="Ảnh Share (OG Image)" name={['translations', tab.key, 'ogImage']} extra="Ảnh riêng khi share MXH. Bỏ trống sẽ lấy Ảnh bìa.">
+          <ImageUpload />
+        </Form.Item>
+      </Space>
+    )
+  }));
+
+  const collapseItems = [
+    {
+      key: 'seo',
+      label: <Space><GlobalOutlined style={{ color: '#003366' }} /><Typography.Text strong>Tối ưu SEO & Mạng xã hội (Tùy chọn)</Typography.Text></Space>,
+      children: <Tabs defaultActiveKey="vi" items={seoTabItems} type="line" />,
+    },
+  ];
 
   return (
     <Drawer
       title={
-        <Space>
-          <AppstoreOutlined style={{ color: '#003366' }} />
-          <span>{isEditMode ? 'Chỉnh sửa Dịch vụ' : 'Thêm Dịch vụ mới'}</span>
-        </Space>
+        <Flex justify="space-between" align="center">
+          <Space><AppstoreOutlined style={{ color: '#003366' }} /><span>{isEditMode ? 'Chỉnh sửa Dịch vụ' : 'Thêm Dịch vụ mới'}</span></Space>
+          <Tooltip title={isFullWidth ? 'Thu nhỏ' : 'Mở toàn màn hình'}>
+            <Button type="text" icon={isFullWidth ? <FullscreenExitOutlined /> : <FullscreenOutlined />} onClick={() => setIsFullWidth(!isFullWidth)} />
+          </Tooltip>
+        </Flex>
       }
-      width={1000}
+      width={isFullWidth ? '100%' : 1000}
       onClose={onClose}
       open={open}
       destroyOnClose
-      extra={
-        <Space>
-          <Button onClick={onClose}>Hủy</Button>
-          <Button onClick={() => form.submit()} type="primary" loading={createMutation.isPending || updateMutation.isPending}>
-            {isEditMode ? 'Cập nhật dịch vụ' : 'Lưu dịch vụ'}
-          </Button>
-        </Space>
-      }
+      extra={<Space><Button onClick={onClose}>Hủy</Button><Button onClick={() => form.submit()} type="primary" loading={createMutation.isPending || updateMutation.isPending} style={{ background: '#003366' }}>{isEditMode ? 'Cập nhật' : 'Lưu dịch vụ'}</Button></Space>}
     >
-      <Spin spinning={isLoading}>
+      <Spin spinning={isLoadingService || isLoadingCategories}>
         <Form layout="vertical" form={form} onFinish={handleFinish}>
-          <Space size="large" style={{ marginBottom: 24 }}>
-            <Form.Item label="Mã Dịch vụ (Code)" name="code" rules={[{ required: true }]} initialValue="">
-              <Input placeholder="VD: warehouse_01" style={{ minWidth: 200 }} />
+          {/* THÔNG TIN CƠ BẢN */}
+          <Card title="Thông tin cơ bản" size="small" style={{ marginBottom: 20 }}>
+            <Space wrap size="large">
+              <Form.Item label="Mã Dịch vụ (Code)" name="code" rules={[{ required: true }]}><Input placeholder="VD: warehouse_01" /></Form.Item>
+              <Form.Item label="Danh mục" name="categoryId" style={{ minWidth: 200 }}>
+                <Select placeholder="Chọn danh mục" allowClear options={categories?.map(c => ({ label: c.name, value: c.id }))} />
+              </Form.Item>a
+              <Form.Item label="Dịch vụ nổi bật" name="featured" valuePropName="checked"><Switch /></Form.Item>
+            </Space>
+            <Form.Item label={<Typography.Text strong>Ảnh bìa chính</Typography.Text>} name="coverImage" rules={[{ required: true }]}>
+              <ImageUpload />
             </Form.Item>
-            <Form.Item label="Danh mục" name="category" rules={[{ required: true }]} initialValue="Kho bãi">
-               <Input placeholder="VD: Kho bãi, Vận tải..." style={{ minWidth: 200 }} />
-            </Form.Item>
-            <Form.Item label="Dịch vụ nổi bật" name="featured" valuePropName="checked" initialValue={false}>
-              <Switch />
-            </Form.Item>
-          </Space>
-
-          <Form.Item
-            label={<Typography.Text strong>Ảnh bìa dịch vụ</Typography.Text>}
-            name="coverImage"
-            rules={[{ required: true, message: 'Vui lòng upload ảnh bìa!' }]}
-          >
-            <ImageUpload />
-          </Form.Item>
-
-          <Tabs defaultActiveKey="vi" items={tabItems} type="card" />
+          </Card>
+          
+          <Collapse ghost items={collapseItems} style={{ marginBottom: 20, backgroundColor: '#fff', border: '1px solid #f0f0f0' }} />
+          
+          <Card title={<Space><AppstoreOutlined />Nội dung chi tiết</Space>} size="small">
+            <Tabs defaultActiveKey="vi" items={contentTabItems} type="card" />
+          </Card>
         </Form>
       </Spin>
     </Drawer>

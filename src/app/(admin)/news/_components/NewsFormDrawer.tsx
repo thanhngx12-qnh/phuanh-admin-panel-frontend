@@ -1,119 +1,61 @@
 // dir: frontend/src/app/(admin)/news/_components/NewsFormDrawer.tsx
 'use client';
 
-import React, { useEffect } from 'react';
-import { App, Button, DatePicker, Drawer, Form, Input, Select, Space, Spin, Switch, Tabs, Typography, Tooltip } from 'antd';
-import { MessageOutlined, ProfileOutlined } from '@ant-design/icons'; // Icon từ thư viện chuẩn AntD
+import React, { useEffect, useState } from 'react';
+import { App, Button, DatePicker, Drawer, Form, Input, Select, Space, Spin, Switch, Tabs, Typography, Tooltip, Card, Flex, Collapse } from 'antd';
+import { MessageOutlined, ProfileOutlined, GlobalOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import api, { BackendResponse } from '@/lib/axios';
-import { News, Translation } from '@/types';
+import { News, Translation, Category } from '@/types';
 import { ImageUpload } from '@/components/ImageUpload';
 import { Editor } from '@/components/Editor';
 
-interface NewsFormDrawerProps {
-  open: boolean;
-  onClose: () => void;
-  newsId?: number | null;
-}
-
-type NewsFormData = Omit<News, 'id' | 'createdAt' | 'updatedAt' | 'publishedAt' | 'translations'> & {
-  publishedAt?: dayjs.Dayjs | null;
-  translations: {
-    [key: string]: Partial<Translation>;
-  };
-};
-
-// --- HÀM CHUYỂN TIÊU ĐỀ THÀNH SLUG CHUẨN SEO ---
-const toSlug = (str: string) => {
-  if (!str) return '';
-  str = str.toLowerCase();
-  str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Bỏ dấu
-  str = str.replace(/[đĐ]/g, 'd');
-  str = str.replace(/([^0-9a-z-\s])/g, ''); // Bỏ ký tự đặc biệt
-  str = str.replace(/(\s+)/g, '-'); // Thay khoảng trắng bằng gạch ngang
-  str = str.replace(/-+/g, '-'); // Bỏ gạch ngang thừa
-  str = str.replace(/^-+|-+$/g, ''); // Bỏ gạch ngang ở đầu/cuối
-  return str;
-};
-
-const fetchNewsById = async (id: number): Promise<News> => {
-  const response = await api.get<BackendResponse<News>>(`/admin/news/${id}`);
-  return response.data.data;
-};
-
-type ApiData = Omit<NewsFormData, 'publishedAt' | 'translations'> & {
-  publishedAt?: string;
-  translations: Partial<Translation>[];
-};
-
-const createNews = async (data: ApiData): Promise<News> => {
-  const response = await api.post<BackendResponse<News>>('/admin/news', data);
-  return response.data.data;
-};
-
-const updateNews = async ({ id, data }: { id: number; data: ApiData }): Promise<News> => {
-  const response = await api.patch<BackendResponse<News>>(`/admin/news/${id}`, data);
-  return response.data.data;
-};
+// --- Helper functions ---
+interface NewsFormDrawerProps { open: boolean; onClose: () => void; newsId?: number | null; }
+type NewsFormData = Omit<News, 'id' | 'createdAt' | 'updatedAt' | 'publishedAt' | 'translations'> & { publishedAt?: dayjs.Dayjs | null; translations: { [key: string]: Partial<Translation>; }; };
+const toSlug = (str: string) => { if (!str) return ''; str = str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').replace(/([^0-9a-z-\s])/g, '').replace(/(\s+)/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, ''); return str; };
+const fetchNewsById = async (id: number): Promise<News> => { const response = await api.get<BackendResponse<News>>(`/admin/news/${id}`); return response.data.data; };
+type ApiData = Omit<NewsFormData, 'publishedAt' | 'translations'> & { publishedAt?: string; translations: Partial<Translation>[]; };
+const createNews = async (data: ApiData): Promise<News> => { const response = await api.post<BackendResponse<News>>('/admin/news', data); return response.data.data; };
+const updateNews = async ({ id, data }: { id: number; data: ApiData }): Promise<News> => { const response = await api.patch<BackendResponse<News>>(`/admin/news/${id}`, data); return response.data.data; };
+const fetchNewsCategories = async (): Promise<Category[]> => { const response = await api.get<BackendResponse<Category[] | {data: Category[]}>>('/admin/categories?type=NEWS'); const result = response.data.data; if (Array.isArray(result)) return result; if (result && 'data' in result && Array.isArray((result as any).data)) return (result as any).data; return []; };
 
 export function NewsFormDrawer({ open, onClose, newsId }: NewsFormDrawerProps) {
   const [form] = Form.useForm<NewsFormData>();
   const { notification } = App.useApp();
   const queryClient = useQueryClient();
-
   const isEditMode = !!newsId;
+  const [isFullWidth, setIsFullWidth] = useState(false);
 
-  // --- HÀM XỬ LÝ TẠO SLUG TỰ ĐỘNG ---
   const handleAutoGenerateSlug = (locale: string) => {
     const title = form.getFieldValue(['translations', locale, 'title']);
-    if (!title) {
-      notification.warning({ message: 'Vui lòng nhập Tiêu đề trước khi tạo URL!' });
-      return;
-    }
-    const slug = toSlug(title);
-    form.setFieldValue(['translations', locale, 'slug'], slug);
-    notification.info({ message: 'Đã tạo URL chuẩn SEO' });
+    if (!title) { notification.warning({ message: 'Vui lòng nhập Tiêu đề trước!' }); return; }
+    form.setFieldValue(['translations', locale, 'slug'], toSlug(title));
   };
 
-  const { data: editingNews, isLoading } = useQuery({
-    queryKey: ['news', newsId],
-    queryFn: () => fetchNewsById(newsId!),
-    enabled: isEditMode && open,
+  const { data: editingNews, isLoading: isLoadingNews } = useQuery({ 
+    queryKey: ['news', newsId], 
+    queryFn: () => fetchNewsById(newsId!), 
+    enabled: isEditMode && open 
   });
 
-  const createMutation = useMutation({
-    mutationFn: createNews,
-    onSuccess: () => {
-      notification.success({ message: 'Tạo bài viết thành công!' });
-      queryClient.invalidateQueries({ queryKey: ['news'] });
-      onClose();
-    },
-    onError: (error: Error) => {
-      notification.error({ message: 'Tạo bài viết thất bại', description: error.message });
-    },
+  // --- SỬA LẠI QUERY KEY Ở ĐÂY ---
+  const { data: categories, isLoading: isLoadingCategories } = useQuery({ 
+    queryKey: ['categories', 'list', { type: 'NEWS' }], // Dùng chung gốc 'categories'
+    queryFn: fetchNewsCategories,
+    enabled: open // Chỉ load khi mở Drawer để tiết kiệm tài nguyên
   });
 
-  const updateMutation = useMutation({
-    mutationFn: updateNews,
-    onSuccess: () => {
-      notification.success({ message: 'Cập nhật bài viết thành công!' });
-      queryClient.invalidateQueries({ queryKey: ['news'] });
-      onClose();
-    },
-    onError: (error: Error) => {
-      notification.error({ message: 'Cập nhật thất bại', description: error.message });
-    },
-  });
-  
+  const createMutation = useMutation({ mutationFn: createNews, onSuccess: () => { notification.success({ message: 'Tạo thành công!' }); queryClient.invalidateQueries({ queryKey: ['news'] }); onClose(); }, onError: (error: Error) => notification.error({ message: 'Thất bại', description: error.message }) });
+  const updateMutation = useMutation({ mutationFn: updateNews, onSuccess: () => { notification.success({ message: 'Cập nhật thành công!' }); queryClient.invalidateQueries({ queryKey: ['news'] }); onClose(); }, onError: (error: Error) => notification.error({ message: 'Thất bại', description: error.message }) });
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const isLoading = isLoadingNews || isLoadingCategories;
 
   useEffect(() => {
     if (isEditMode && editingNews) {
       const translationsForForm: { [key: string]: Partial<Translation> } = {};
-      editingNews.translations.forEach(t => {
-        translationsForForm[t.locale] = t;
-      });
+      editingNews.translations.forEach(t => { translationsForForm[t.locale] = t; });
       form.setFieldsValue({
         ...editingNews,
         publishedAt: editingNews.publishedAt ? dayjs(editingNews.publishedAt) : null,
@@ -126,126 +68,124 @@ export function NewsFormDrawer({ open, onClose, newsId }: NewsFormDrawerProps) {
 
   const handleFinish = (values: NewsFormData) => {
     const { publishedAt, translations, ...restValues } = values;
-
     const apiData: ApiData = {
       ...restValues,
       publishedAt: publishedAt ? publishedAt.toISOString() : undefined,
-      translations: Object.entries(translations)
-        .map(([locale, trans]) => ({ ...trans, locale: locale as 'vi' | 'en' | 'zh' }))
-        .filter(t => t.title && t.title.trim() !== ''),
+      translations: Object.entries(translations).map(([locale, trans]) => ({ ...trans, locale: locale as 'vi' | 'en' | 'zh' })).filter(t => t.title && t.title.trim() !== ''),
     };
-    
-    if (isEditMode) {
-      updateMutation.mutate({ id: newsId!, data: apiData });
-    } else {
-      createMutation.mutate(apiData);
-    }
+    if (isEditMode) updateMutation.mutate({ id: newsId!, data: apiData });
+    else createMutation.mutate(apiData);
   };
 
-  // --- CẤU HÌNH TABS (ITEMS) THEO CHUẨN MỚI ---
-  const tabItems = [
-    { key: 'vi', label: 'Tiếng Việt (VI)' },
-    { key: 'en', label: 'Tiếng Anh (EN)' },
-    { key: 'zh', label: 'Tiếng Trung (ZH)' },
+  // --- Tab Nội dung chính ---
+  const contentTabItems = [
+    { key: 'vi', label: 'Tiếng Việt (VI)' }, { key: 'en', label: 'Tiếng Anh (EN)' }, { key: 'zh', label: 'Tiếng Trung (ZH)' },
   ].map(tab => ({
     key: tab.key,
     label: tab.label,
     children: (
-      <div style={{ padding: '16px 0' }}>
-        <Form.Item 
-          label={<Typography.Text strong>Tiêu đề bài viết</Typography.Text>} 
-          name={['translations', tab.key, 'title']} 
-          rules={tab.key === 'vi' ? [{ required: true, message: 'Tiêu đề là bắt buộc!' }] : []}
-        >
-          <Input maxLength={70} showCount placeholder="Nhập tiêu đề (Tối ưu 50-60 ký tự)" />
+      <Space direction="vertical" size="middle" style={{ width: '100%', padding: '16px 0' }}>
+        <Form.Item label={<Typography.Text strong>Tiêu đề bài viết</Typography.Text>} name={['translations', tab.key, 'title']} rules={tab.key === 'vi' ? [{ required: true }] : []}>
+          <Input maxLength={70} showCount placeholder="Nhập tiêu đề..." />
         </Form.Item>
-
-        <Form.Item 
-          label={<Typography.Text strong>Đường dẫn (URL Slug)</Typography.Text>} 
-          required={tab.key === 'vi'}
-        >
+        <Form.Item label={<Typography.Text strong>Đường dẫn (URL Slug)</Typography.Text>} required={tab.key === 'vi'}>
           <Space.Compact style={{ width: '100%' }}>
-            <Form.Item
-              name={['translations', tab.key, 'slug']}
-              noStyle
-              rules={tab.key === 'vi' ? [{ required: true, message: 'URL không được để trống!' }] : []}
-            >
-              <Input placeholder="Ví dụ: tin-tuc-logistics-ta-lung" style={{ width: 'calc(100% - 120px)' }} />
+            <Form.Item name={['translations', tab.key, 'slug']} noStyle rules={tab.key === 'vi' ? [{ required: true }] : []}>
+              <Input placeholder="vi-du-duong-dan" />
             </Form.Item>
-            <Tooltip title="Tạo URL tự động từ tiêu đề">
-              <Button 
-                icon={<MessageOutlined />} 
-                onClick={() => handleAutoGenerateSlug(tab.key)}
-                style={{ width: 120 }}
-              >
-                Tạo URL
-              </Button>
+            <Tooltip title="Tạo tự động từ tiêu đề">
+              <Button icon={<MessageOutlined />} onClick={() => handleAutoGenerateSlug(tab.key)}>Tạo URL</Button>
             </Tooltip>
           </Space.Compact>
         </Form.Item>
-
-        <Form.Item 
-          label={<Typography.Text strong>Mô tả ngắn (Meta Description)</Typography.Text>} 
-          name={['translations', tab.key, 'excerpt']}
-        >
-          <Input.TextArea rows={3} maxLength={160} showCount placeholder="Tóm tắt nội dung bài viết cho Google (150-160 ký tự)" />
+        <Form.Item label={<Typography.Text strong>Đoạn trích (Mô tả ngắn)</Typography.Text>} name={['translations', tab.key, 'excerpt']}>
+          <Input.TextArea rows={3} maxLength={160} showCount placeholder="Tóm tắt ngắn gọn bài viết..." />
         </Form.Item>
-
         <Form.Item label={<Typography.Text strong>Nội dung chi tiết</Typography.Text>} name={['translations', tab.key, 'content']}>
           <Editor />
         </Form.Item>
-      </div>
+      </Space>
+    )
+  }));
+  
+  // --- Tab SEO ---
+  const seoTabItems = [
+    { key: 'vi', label: 'SEO - VI' }, { key: 'en', label: 'SEO - EN' }, { key: 'zh', label: 'SEO - ZH' },
+  ].map(tab => ({
+    key: tab.key,
+    label: tab.label,
+    children: (
+      <Space direction="vertical" size="middle" style={{ width: '100%', padding: '16px 0' }}>
+        <Form.Item label="SEO Title" name={['translations', tab.key, 'metaTitle']} extra="Bỏ trống sẽ tự lấy Tiêu đề bài viết.">
+          <Input maxLength={70} showCount />
+        </Form.Item>
+        <Form.Item label="Meta Description" name={['translations', tab.key, 'metaDescription']} extra="Bỏ trống sẽ tự lấy Mô tả ngắn.">
+          <Input.TextArea rows={3} maxLength={160} showCount />
+        </Form.Item>
+        <Form.Item label="Meta Keywords" name={['translations', tab.key, 'metaKeywords']} extra="Các từ khóa cách nhau bằng dấu phẩy.">
+          <Input placeholder="logistics, tà lùng, vận tải..." />
+        </Form.Item>
+        <Form.Item label="Ảnh Share (OG Image)" name={['translations', tab.key, 'ogImage']} extra="Ảnh hiển thị khi share Facebook/Zalo. Bỏ trống sẽ lấy Ảnh bìa.">
+          <ImageUpload />
+        </Form.Item>
+      </Space>
     )
   }));
 
   return (
     <Drawer
       title={
-        <Space>
-          <ProfileOutlined style={{ color: '#003366' }} />
-          <span>{isEditMode ? 'Chỉnh sửa Bài viết' : 'Tạo Bài viết mới'}</span>
-        </Space>
+        <Flex justify="space-between" align="center">
+          <Space><ProfileOutlined /><span>{isEditMode ? 'Chỉnh sửa Bài viết' : 'Tạo Bài viết mới'}</span></Space>
+          <Tooltip title={isFullWidth ? 'Thu nhỏ' : 'Mở toàn màn hình'}>
+            <Button type="text" icon={isFullWidth ? <FullscreenExitOutlined /> : <FullscreenOutlined />} onClick={() => setIsFullWidth(!isFullWidth)} />
+          </Tooltip>
+        </Flex>
       }
-      width={1000} // Tăng nhẹ chiều rộng để viết bài thoải mái hơn
+      width={isFullWidth ? '100%' : 1000}
       onClose={onClose}
       open={open}
       destroyOnClose
-      extra={
-        <Space>
-          <Button onClick={onClose}>Hủy</Button>
-          <Button onClick={() => form.submit()} type="primary" loading={isPending}>
-            {isEditMode ? 'Cập nhật' : 'Lưu bài viết'}
-          </Button>
-        </Space>
-      }
+      extra={<Space><Button onClick={onClose}>Hủy</Button><Button onClick={() => form.submit()} type="primary" loading={isPending}>{isEditMode ? 'Cập nhật' : 'Lưu'}</Button></Space>}
     >
       <Spin spinning={isLoading}>
         <Form layout="vertical" form={form} onFinish={handleFinish}>
-          <Space size="large" style={{ marginBottom: 20 }}>
-            <Form.Item label="Trạng thái" name="status" rules={[{ required: true }]} initialValue="DRAFT" style={{ minWidth: 150 }}>
-              <Select>
-                <Select.Option value="DRAFT">Bản nháp</Select.Option>
-                <Select.Option value="PUBLISHED">Xuất bản</Select.Option>
-              </Select>
+          {/* 1. THÔNG TIN CHUNG */}
+          <Card title="Thông tin cơ bản" size="small" style={{ marginBottom: 20 }}>
+            <Space wrap size="large">
+              <Form.Item label="Trạng thái" name="status" rules={[{ required: true }]} initialValue="DRAFT" style={{ minWidth: 150 }}>
+                <Select><Select.Option value="DRAFT">Bản nháp</Select.Option><Select.Option value="PUBLISHED">Xuất bản</Select.Option></Select>
+              </Form.Item>
+              <Form.Item label="Danh mục" name="categoryId" style={{ minWidth: 200 }}>
+                <Select placeholder="Chọn danh mục" allowClear options={categories?.map(c => ({ label: c.name, value: c.id }))} />
+              </Form.Item>
+              <Form.Item label="Ngày xuất bản" name="publishedAt" style={{ minWidth: 200 }}>
+                <DatePicker showTime format="DD/MM/YYYY HH:mm" />
+              </Form.Item>
+              <Form.Item label="Tin nổi bật" name="featured" valuePropName="checked"><Switch /></Form.Item>
+            </Space>
+            <Form.Item label={<Typography.Text strong>Ảnh bìa chính</Typography.Text>} name="coverImage" rules={[{ required: true }]}>
+              <ImageUpload />
             </Form.Item>
-            <Form.Item label="Ngày xuất bản" name="publishedAt" style={{ minWidth: 200 }}>
-              <DatePicker showTime format="DD/MM/YYYY HH:mm" />
-            </Form.Item>
-            <Form.Item label="Tin nổi bật" name="featured" valuePropName="checked" initialValue={false}>
-              <Switch />
-            </Form.Item>
-          </Space>
-
-          <Form.Item
-            label={<Typography.Text strong>Ảnh bìa</Typography.Text>}
-            name="coverImage"
-            rules={[{ required: true, message: 'Vui lòng upload ảnh bìa!' }]}
-            validateTrigger="onBlur" 
+          </Card>
+          
+          {/* 2. SEO & SOCIAL (Đẩy lên trên và có thể Đóng/Mở) */}
+          <Collapse 
+            defaultActiveKey={[]} 
+            style={{ marginBottom: 20, backgroundColor: '#fff', border: '1px solid #f0f0f0' }}
           >
-            <ImageUpload />
-          </Form.Item>
-
-          <Tabs defaultActiveKey="vi" items={tabItems} type="card" />
+            <Collapse.Panel 
+              key="seo" 
+              header={<Space><GlobalOutlined style={{ color: '#003366' }} /><Typography.Text strong>Tối ưu SEO & Mạng xã hội (Tùy chọn)</Typography.Text></Space>}
+            >
+              <Tabs defaultActiveKey="vi" items={seoTabItems} type="line" />
+            </Collapse.Panel>
+          </Collapse>
+          
+          {/* 3. NỘI DUNG CHI TIẾT (Đưa xuống dưới) */}
+          <Card title={<Space><ProfileOutlined />Nội dung bài viết</Space>} size="small">
+            <Tabs defaultActiveKey="vi" items={contentTabItems} type="card" />
+          </Card>
         </Form>
       </Spin>
     </Drawer>
