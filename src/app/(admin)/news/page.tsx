@@ -1,4 +1,3 @@
-// dir: src/app/(admin)/news/page.tsx
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -86,9 +85,12 @@ export default function NewsPage() {
     queryFn: fetchCategories,
   });
 
-  // Chuyển đổi danh mục thành định dạng filter của AntD
+  // --- SỬA LỖI TẠI ĐÂY: Tìm tên tiếng Việt để làm label filter ---
   const categoryFilters = useMemo(() => {
-    return categories?.map(cat => ({ text: cat.name, value: cat.id })) || [];
+    return categories?.map(cat => ({ 
+      text: cat.translations?.find(t => t.locale === 'vi')?.name || 'N/A', 
+      value: cat.id 
+    })) || [];
   }, [categories]);
 
   const updateFeaturedMutation = useMutation({
@@ -153,8 +155,11 @@ export default function NewsPage() {
       key: 'categoryId',
       filters: categoryFilters,
       filterMultiple: false,
+      // --- SỬA LỖI TẠI ĐÂY: Tìm tên tiếng Việt của danh mục ---
       render: (_, record) => record.category ? (
-        <Tag icon={<FolderOpenOutlined />} color="blue">{record.category.name}</Tag>
+        <Tag icon={<FolderOpenOutlined />} color="blue">
+          {record.category.translations?.find(t => t.locale === 'vi')?.name || 'N/A'}
+        </Tag>
       ) : '-'
     },
     { 

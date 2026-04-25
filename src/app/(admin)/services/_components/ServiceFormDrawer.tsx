@@ -221,7 +221,7 @@ export function ServiceFormDrawer({ open, onClose, serviceId }: ServiceFormDrawe
                   placeholder="Chọn danh mục" 
                   allowClear 
                   options={categories?.map(c => ({ 
-                    // SỬA LỖI TẠI ĐÂY: Tìm tên trong mảng translations
+                    // SỬA TẠI ĐÂY: Tìm tên Tiếng Việt trong mảng translations mới
                     label: c.translations?.find(t => t.locale === 'vi')?.name || 'N/A', 
                     value: c.id 
                   }))} 

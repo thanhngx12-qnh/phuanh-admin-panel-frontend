@@ -1,4 +1,3 @@
-// dir: src/app/(admin)/services/page.tsx
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -27,7 +26,7 @@ const fetchServices = async (query: ServicesQuery): Promise<PaginatedResponse<Se
     sortOrder: query.sortOrder 
   };
   
-  // Xử lý Filter Danh mục (Mới)
+  // Xử lý Filter Danh mục
   if (query.filters?.categoryId?.[0]) {
     params.categoryId = Number(query.filters.categoryId[0]);
   }
@@ -78,8 +77,12 @@ export default function ServicesPage() {
     queryFn: fetchCategories,
   });
 
+  // --- SỬA LỖI TẠI ĐÂY: Lấy tên tiếng Việt của danh mục làm text filter ---
   const categoryFilters = useMemo(() => {
-    return categories?.map(cat => ({ text: cat.name, value: cat.id })) || [];
+    return categories?.map(cat => ({ 
+        text: cat.translations?.find(t => t.locale === 'vi')?.name || 'N/A', 
+        value: cat.id 
+    })) || [];
   }, [categories]);
 
   const deleteMutation = useMutation({
@@ -141,8 +144,11 @@ export default function ServicesPage() {
       key: 'categoryId', 
       filters: categoryFilters,
       filterMultiple: false,
+      // --- SỬA LỖI TẠI ĐÂY: Hiển thị tên danh mục tiếng Việt từ mảng translations ---
       render: (_, record) => record.category ? (
-        <Tag icon={<FolderOpenOutlined />} color="blue">{record.category.name}</Tag>
+        <Tag icon={<FolderOpenOutlined />} color="blue">
+            {record.category.translations?.find(t => t.locale === 'vi')?.name || 'N/A'}
+        </Tag>
       ) : '-'
     },
     {
