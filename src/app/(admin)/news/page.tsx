@@ -1,3 +1,4 @@
+// dir: admin-panel-frontend/src/app/(admin)/news/page.tsx
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -155,12 +156,17 @@ export default function NewsPage() {
       key: 'categoryId',
       filters: categoryFilters,
       filterMultiple: false,
-      // --- SỬA LỖI TẠI ĐÂY: Tìm tên tiếng Việt của danh mục ---
-      render: (_, record) => record.category ? (
-        <Tag icon={<FolderOpenOutlined />} color="blue">
-          {record.category.translations?.find(t => t.locale === 'vi')?.name || 'N/A'}
-        </Tag>
-      ) : '-'
+      render: (categoryId: number) => {
+        // SỬA TẠI ĐÂY: Dò trong list 'categories' đã fetch ở trên
+        const categoryInfo = categories?.find(cat => cat.id === categoryId);
+        const viName = categoryInfo?.translations?.find(t => t.locale === 'vi')?.name;
+
+        return categoryId ? (
+          <Tag icon={<FolderOpenOutlined />} color="blue">
+            {viName || 'N/A'}
+          </Tag>
+        ) : '-';
+      }
     },
     { 
       title: 'Trạng thái', 
