@@ -1,9 +1,8 @@
-// dir: frontend/src/app/(admin)/services/_components/ServiceFormDrawer.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { App, Button, Drawer, Form, Input, Select, Space, Spin, Switch, Tabs, Typography, Tooltip, Card, Flex, Collapse } from 'antd';
-import { MessageOutlined, AppstoreOutlined, GlobalOutlined, FullscreenOutlined, FullscreenExitOutlined, DownOutlined } from '@ant-design/icons';
+import { MessageOutlined, AppstoreOutlined, GlobalOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { BackendResponse } from '@/lib/axios';
 import { Service, Translation, Category } from '@/types';
@@ -33,7 +32,6 @@ const fetchServiceById = async (id: number): Promise<Service> => {
   return response.data.data;
 };
 
-// --- HÀM LẤY DANH MỤC DỊCH VỤ (Đã fix lỗi map) ---
 const fetchServiceCategories = async (): Promise<Category[]> => {
   try {
     const response = await api.get<BackendResponse<Category[] | {data: Category[]}>>('/admin/categories?type=SERVICE');
@@ -86,7 +84,6 @@ export function ServiceFormDrawer({ open, onClose, serviceId }: ServiceFormDrawe
     enabled: isEditMode && open,
   });
 
-  // --- ĐỒNG BỘ QUERY KEY VỚI TRANG DANH MỤC ---
   const { data: categories, isLoading: isLoadingCategories } = useQuery({
     queryKey: ['categories', 'list', { type: 'SERVICE' }],
     queryFn: fetchServiceCategories,
@@ -131,7 +128,7 @@ export function ServiceFormDrawer({ open, onClose, serviceId }: ServiceFormDrawe
     const apiData: ApiData = {
       ...restValues,
       translations: Object.entries(translations)
-        .map(([locale, trans]) => ({ ...trans, locale: locale as 'vi' | 'en' | 'zh' }))
+        .map(([locale, trans]) => ({ ...trans, locale: locale as string }))
         .filter(t => t.title && t.title.trim() !== ''),
     };
     if (isEditMode) updateMutation.mutate({ id: serviceId!, data: apiData });
@@ -173,10 +170,10 @@ export function ServiceFormDrawer({ open, onClose, serviceId }: ServiceFormDrawe
     label: tab.label,
     children: (
       <Space direction="vertical" size="middle" style={{ width: '100%', padding: '16px 0' }}>
-        <Form.Item label="SEO Title" name={['translations', tab.key, 'metaTitle']} extra="Bỏ trống sẽ tự lấy Tên dịch vụ. Tối ưu: 60-70 ký tự.">
+        <Form.Item label="SEO Title" name={['translations', tab.key, 'metaTitle']} extra="Bỏ trống sẽ tự lấy Tên dịch vụ.">
           <Input maxLength={70} showCount />
         </Form.Item>
-        <Form.Item label="Meta Description" name={['translations', tab.key, 'metaDescription']} extra="Bỏ trống sẽ tự lấy Mô tả ngắn. Tối ưu: 150-160 ký tự.">
+        <Form.Item label="Meta Description" name={['translations', tab.key, 'metaDescription']} extra="Bỏ trống sẽ tự lấy Mô tả ngắn.">
           <Input.TextArea rows={3} maxLength={160} showCount />
         </Form.Item>
         <Form.Item label="Meta Keywords" name={['translations', tab.key, 'metaKeywords']}>
@@ -220,8 +217,16 @@ export function ServiceFormDrawer({ open, onClose, serviceId }: ServiceFormDrawe
             <Space wrap size="large">
               <Form.Item label="Mã Dịch vụ (Code)" name="code" rules={[{ required: true }]}><Input placeholder="VD: warehouse_01" /></Form.Item>
               <Form.Item label="Danh mục" name="categoryId" style={{ minWidth: 200 }}>
-                <Select placeholder="Chọn danh mục" allowClear options={categories?.map(c => ({ label: c.name, value: c.id }))} />
-              </Form.Item>a
+                <Select 
+                  placeholder="Chọn danh mục" 
+                  allowClear 
+                  options={categories?.map(c => ({ 
+                    // SỬA LỖI TẠI ĐÂY: Tìm tên trong mảng translations
+                    label: c.translations?.find(t => t.locale === 'vi')?.name || 'N/A', 
+                    value: c.id 
+                  }))} 
+                />
+              </Form.Item>
               <Form.Item label="Dịch vụ nổi bật" name="featured" valuePropName="checked"><Switch /></Form.Item>
             </Space>
             <Form.Item label={<Typography.Text strong>Ảnh bìa chính</Typography.Text>} name="coverImage" rules={[{ required: true }]}>

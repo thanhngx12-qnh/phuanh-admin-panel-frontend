@@ -59,8 +59,8 @@ const allMenuItems: MenuItemConfig[] = [
     icon: <AppstoreOutlined />, 
     roles: ['CONTENT_MANAGER'],
     children: [
-      { label: <Link href="/services">Dịch vụ</Link>, key: '/services' },
-      { label: <Link href="/news">Tin tức</Link>, key: '/news' },
+      { label: <Link href="/services">Dịch vụ</Link>, key: '/services', icon: <AppstoreOutlined /> },
+      { label: <Link href="/news">Tin tức</Link>, key: '/news', icon: <ReadOutlined /> },
       // THÊM MỤC QUẢN LÝ DANH MỤC VÀO ĐÂY
       { label: <Link href="/categories">Danh mục</Link>, key: '/categories', icon: <FolderOpenOutlined /> },
     ],

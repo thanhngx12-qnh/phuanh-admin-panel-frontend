@@ -1,4 +1,3 @@
-// dir: frontend/src/app/(admin)/news/_components/NewsFormDrawer.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -40,11 +39,10 @@ export function NewsFormDrawer({ open, onClose, newsId }: NewsFormDrawerProps) {
     enabled: isEditMode && open 
   });
 
-  // --- SỬA LẠI QUERY KEY Ở ĐÂY ---
   const { data: categories, isLoading: isLoadingCategories } = useQuery({ 
-    queryKey: ['categories', 'list', { type: 'NEWS' }], // Dùng chung gốc 'categories'
+    queryKey: ['categories', 'list', { type: 'NEWS' }],
     queryFn: fetchNewsCategories,
-    enabled: open // Chỉ load khi mở Drawer để tiết kiệm tài nguyên
+    enabled: open 
   });
 
   const createMutation = useMutation({ mutationFn: createNews, onSuccess: () => { notification.success({ message: 'Tạo thành công!' }); queryClient.invalidateQueries({ queryKey: ['news'] }); onClose(); }, onError: (error: Error) => notification.error({ message: 'Thất bại', description: error.message }) });
@@ -71,7 +69,7 @@ export function NewsFormDrawer({ open, onClose, newsId }: NewsFormDrawerProps) {
     const apiData: ApiData = {
       ...restValues,
       publishedAt: publishedAt ? publishedAt.toISOString() : undefined,
-      translations: Object.entries(translations).map(([locale, trans]) => ({ ...trans, locale: locale as 'vi' | 'en' | 'zh' })).filter(t => t.title && t.title.trim() !== ''),
+      translations: Object.entries(translations).map(([locale, trans]) => ({ ...trans, locale: locale as string })).filter(t => t.title && t.title.trim() !== ''),
     };
     if (isEditMode) updateMutation.mutate({ id: newsId!, data: apiData });
     else createMutation.mutate(apiData);
@@ -157,7 +155,15 @@ export function NewsFormDrawer({ open, onClose, newsId }: NewsFormDrawerProps) {
                 <Select><Select.Option value="DRAFT">Bản nháp</Select.Option><Select.Option value="PUBLISHED">Xuất bản</Select.Option></Select>
               </Form.Item>
               <Form.Item label="Danh mục" name="categoryId" style={{ minWidth: 200 }}>
-                <Select placeholder="Chọn danh mục" allowClear options={categories?.map(c => ({ label: c.name, value: c.id }))} />
+                <Select 
+                  placeholder="Chọn danh mục" 
+                  allowClear 
+                  options={categories?.map(c => ({ 
+                    // SỬA TẠI ĐÂY: Tìm tên tiếng Việt trong mảng translations
+                    label: c.translations?.find(t => t.locale === 'vi')?.name || 'N/A', 
+                    value: c.id 
+                  }))} 
+                />
               </Form.Item>
               <Form.Item label="Ngày xuất bản" name="publishedAt" style={{ minWidth: 200 }}>
                 <DatePicker showTime format="DD/MM/YYYY HH:mm" />
@@ -169,7 +175,7 @@ export function NewsFormDrawer({ open, onClose, newsId }: NewsFormDrawerProps) {
             </Form.Item>
           </Card>
           
-          {/* 2. SEO & SOCIAL (Đẩy lên trên và có thể Đóng/Mở) */}
+          {/* 2. SEO & SOCIAL */}
           <Collapse 
             defaultActiveKey={[]} 
             style={{ marginBottom: 20, backgroundColor: '#fff', border: '1px solid #f0f0f0' }}
@@ -182,7 +188,7 @@ export function NewsFormDrawer({ open, onClose, newsId }: NewsFormDrawerProps) {
             </Collapse.Panel>
           </Collapse>
           
-          {/* 3. NỘI DUNG CHI TIẾT (Đưa xuống dưới) */}
+          {/* 3. NỘI DUNG CHI TIẾT */}
           <Card title={<Space><ProfileOutlined />Nội dung bài viết</Space>} size="small">
             <Tabs defaultActiveKey="vi" items={contentTabItems} type="card" />
           </Card>
