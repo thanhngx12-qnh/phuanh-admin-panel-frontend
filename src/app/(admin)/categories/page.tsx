@@ -1,4 +1,4 @@
-// --- File: admin-panel-frontend/src/app/%28admin%29/categories/page.tsx ---
+// dir: admin-panel-frontend/src/app/(admin)/categories/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -10,22 +10,29 @@ import { PlusOutlined, HomeOutlined, FolderOpenOutlined, GlobalOutlined } from '
 import { useDebounce } from 'use-debounce';
 import api, { BackendResponse } from '@/lib/axios';
 import { Category, CategoryType } from '@/types';
+import { pinyin } from 'pinyin-pro'; // Import thư viện pinyin
 
-// --- Hàm hỗ trợ tạo Slug tự động ---
-const slugify = (str: string) => {
+// --- Hàm hỗ trợ tạo Slug tự động Đa ngôn ngữ ---
+const slugify = (str: string, locale: string) => {
   if (!str) return '';
-  return str
+  let result = str;
+
+  // Xử lý riêng tiếng Trung
+  if (locale === 'zh') {
+    result = pinyin(str, { toneType: 'none', nonPinyin: 'removed', v: true });
+  }
+
+  return result
     .toLowerCase()
-    .normalize("NFD") // Chuyển về dạng tổ hợp để loại bỏ dấu
-    .replace(/[\u0300-\u036f]/g, "") // Xóa các dấu sau khi normalize
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[đĐ]/g, "d")
-    .replace(/([^0-9a-z-\s])/g, "") // Xóa ký tự đặc biệt
-    .replace(/(\s+)/g, "-") // Thay khoảng trắng bằng -
-    .replace(/-+/g, "-") // Loại bỏ nhiều dấu - liên tiếp
-    .replace(/^-+|-+$/g, ""); // Cắt - ở đầu và cuối
+    .replace(/([^0-9a-z-\s])/g, "")
+    .replace(/(\s+)/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
 };
 
-// --- Interface cho Query ---
 interface CategoriesQuery {
   q?: string;
   sortBy?: string;
@@ -43,9 +50,13 @@ const fetchCategories = async (query: CategoriesQuery): Promise<Category[]> => {
     };
     
     const response = await api.get<BackendResponse<{ data: Category[] }>>('/admin/categories', { params });
-    return response.data.data.data || [];
+    const result = response.data.data;
+    
+    // Xử lý các định dạng API trả về
+    if (Array.isArray(result)) return result;
+    if (result && 'data' in result && Array.isArray((result as any).data)) return (result as any).data;
+    return [];
   } catch (error) {
-    console.error("Fetch categories failed:", error);
     return [];
   }
 };
@@ -61,16 +72,26 @@ export default function CategoriesPage() {
   const queryClient = useQueryClient();
   const { notification } = App.useApp();
 
-  // --- QUERY DỮ LIỆU ---
   const { data: categories, isFetching, isLoading } = useQuery({
     queryKey: ['categories', 'list', { ...queryParams, q: debouncedSearch }],
     queryFn: () => fetchCategories({ ...queryParams, q: debouncedSearch }),
+    placeholderData: (prev) => prev,
   });
 
   const mutation = useMutation({
     mutationFn: async (values: any) => {
-      if (editingCategory) return api.patch(`/admin/categories/${editingCategory.id}`, values);
-      return api.post('/admin/categories', values);
+      // Dọn dẹp object translations về mảng
+      const translationsArray = Object.entries(values.translations)
+        .map(([locale, data]: [string, any]) => ({ ...data, locale }))
+        .filter(t => t.name && t.name.trim() !== '');
+
+      const payload = {
+        type: values.type,
+        translations: translationsArray
+      };
+
+      if (editingCategory) return api.patch(`/admin/categories/${editingCategory.id}`, payload);
+      return api.post('/admin/categories', payload);
     },
     onSuccess: () => {
       notification.success({ message: editingCategory ? 'Cập nhật thành công' : 'Thêm mới thành công' });
@@ -88,11 +109,7 @@ export default function CategoriesPage() {
     }
   });
 
-  const handleTableChange = (
-    pagination: TablePaginationConfig,
-    filters: Record<string, FilterValue | null>,
-    sorter: SorterResult<Category> | SorterResult<Category>[]
-  ) => {
+  const handleTableChange = (pagination: TablePaginationConfig, filters: Record<string, FilterValue | null>, sorter: SorterResult<Category> | SorterResult<Category>[]) => {
     const s = Array.isArray(sorter) ? sorter[0] : sorter;
     setQueryParams(prev => ({
       ...prev,
@@ -105,21 +122,17 @@ export default function CategoriesPage() {
   const openDrawer = (record?: Category) => {
     if (record) {
       setEditingCategory(record);
+      // Chuyển mảng array về object để Form dễ map dữ liệu vào từng Tab
+      const transObj: Record<string, any> = {};
+      record.translations?.forEach(t => { transObj[t.locale] = t; });
+
       form.setFieldsValue({
         type: record.type,
-        parentId: record.parentId,
-        translations: record.translations
+        translations: transObj
       });
     } else {
       setEditingCategory(null);
       form.resetFields();
-      form.setFieldsValue({
-        translations: [
-          { locale: 'vi', name: '', slug: '' },
-          { locale: 'en', name: '', slug: '' },
-          { locale: 'zh', name: '', slug: '' }
-        ]
-      });
     }
     setIsDrawerOpen(true);
   };
@@ -129,25 +142,10 @@ export default function CategoriesPage() {
     setEditingCategory(null);
   };
 
-  // --- Logic tạo Slug tự động khi gõ tên ---
-  const handleValuesChange = (changedValues: any, allValues: any) => {
-    if (changedValues.translations) {
-      // Tìm xem bản dịch ở ngôn ngữ nào vừa thay đổi tên
-      const changedIndex = changedValues.translations.findIndex((item: any) => item && item.name !== undefined);
-      
-      if (changedIndex !== -1) {
-        const nameValue = changedValues.translations[changedIndex].name;
-        const currentTranslations = [...allValues.translations];
-        
-        // Cập nhật slug tương ứng cho index đó
-        currentTranslations[changedIndex] = {
-          ...currentTranslations[changedIndex],
-          slug: slugify(nameValue)
-        };
-
-        form.setFieldsValue({ translations: currentTranslations });
-      }
-    }
+  const handleAutoGenerateSlug = (locale: string) => {
+    const name = form.getFieldValue(['translations', locale, 'name']);
+    if (!name) return;
+    form.setFieldValue(['translations', locale, 'slug'], slugify(name, locale));
   };
 
   const columns: TableProps<Category>['columns'] = [
@@ -176,18 +174,13 @@ export default function CategoriesPage() {
       )
     },
     { 
-      title: 'Loại bài viết', 
+      title: 'Phân loại', 
       dataIndex: 'type', 
       key: 'type',
-      filters: [
-        { text: 'Tin tức', value: 'NEWS' },
-        { text: 'Dịch vụ', value: 'SERVICE' },
-      ],
+      filters: [{ text: 'Tin tức', value: 'NEWS' }, { text: 'Dịch vụ', value: 'SERVICE' }],
       filterMultiple: false,
       render: (type: CategoryType) => (
-        <Tag color={type === 'NEWS' ? 'blue' : 'green'}>
-          {type === 'NEWS' ? 'TIN TỨC' : 'DỊCH VỤ'}
-        </Tag>
+        <Tag color={type === 'NEWS' ? 'blue' : 'green'}>{type === 'NEWS' ? 'TIN TỨC' : 'DỊCH VỤ'}</Tag>
       )
     },
     {
@@ -197,13 +190,7 @@ export default function CategoriesPage() {
       render: (_, record) => (
         <Space size="middle">
           <Button type="link" size="small" onClick={() => openDrawer(record)}>Sửa</Button>
-          <Popconfirm 
-            title="Xóa danh mục" 
-            onConfirm={() => deleteMutation.mutate(record.id)} 
-            okText="Xóa" 
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-          >
+          <Popconfirm title="Xóa danh mục" onConfirm={() => deleteMutation.mutate(record.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
             <Button type="link" danger size="small">Xóa</Button>
           </Popconfirm>
         </Space>
@@ -211,28 +198,27 @@ export default function CategoriesPage() {
     },
   ];
 
-  const renderTranslationFields = (index: number, label: string) => (
-    <div key={index}>
-        <Form.Item name={['translations', index, 'locale']} hidden><Input /></Form.Item>
-        <Form.Item 
-            label={`Tên danh mục (${label})`} 
-            name={['translations', index, 'name']} 
-            rules={[{ required: index === 0, message: 'Tên Tiếng Việt là bắt buộc' }]}
-        >
-            <Input placeholder={`Nhập tên bằng ${label}`} />
+  const tabItems = [
+    { key: 'vi', label: 'Tiếng Việt' },
+    { key: 'en', label: 'English' },
+    { key: 'zh', label: 'Chinese' },
+  ].map(lang => ({
+    key: lang.key,
+    label: lang.label,
+    children: (
+      <div style={{ padding: '16px 0' }}>
+        <Form.Item label={`Tên danh mục`} name={['translations', lang.key, 'name']} rules={lang.key === 'vi' ? [{ required: true, message: 'Bắt buộc nhập!' }] : []}>
+          <Input placeholder="VD: Vận tải quốc tế" onChange={() => handleAutoGenerateSlug(lang.key)} />
         </Form.Item>
-        <Form.Item 
-            label={`Slug / Đường dẫn (${label})`} 
-            name={['translations', index, 'slug']} 
-            rules={[{ required: index === 0, message: 'Slug Tiếng Việt là bắt buộc' }]}
-        >
-            <Input placeholder="Tự động tạo khi nhập tên..." />
+        <Form.Item label={`Đường dẫn (Slug)`} name={['translations', lang.key, 'slug']} rules={lang.key === 'vi' ? [{ required: true }] : []}>
+          <Input placeholder="van-tai-quoc-te" />
         </Form.Item>
-        <Form.Item label={`Mô tả (${label})`} name={['translations', index, 'description']}>
-            <Input.TextArea rows={2} />
+        <Form.Item label={`Mô tả ngắn`} name={['translations', lang.key, 'description']}>
+          <Input.TextArea rows={3} />
         </Form.Item>
-    </div>
-  );
+      </div>
+    )
+  }));
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -248,6 +234,7 @@ export default function CategoriesPage() {
             allowClear
             enterButton
             style={{ width: 350 }} 
+            value={queryParams.q}
             onChange={(e) => setQueryParams(prev => ({ ...prev, q: e.target.value }))}
             loading={isFetching}
           />
@@ -269,7 +256,8 @@ export default function CategoriesPage() {
         title={editingCategory ? 'Chỉnh sửa danh mục' : 'Tạo danh mục mới'}
         open={isDrawerOpen}
         onClose={closeDrawer}
-        width={550}
+        width={500}
+        destroyOnClose
         extra={
           <Space>
             <Button onClick={closeDrawer}>Hủy</Button>
@@ -279,32 +267,22 @@ export default function CategoriesPage() {
           </Space>
         }
       >
-        <Form 
-          form={form} 
-          layout="vertical" 
-          onFinish={(v) => mutation.mutate(v)}
-          onValuesChange={handleValuesChange} // <-- Gắn logic tạo slug
-        >
+        <Form form={form} layout="vertical" onFinish={(v) => mutation.mutate(v)}>
           <Form.Item 
             label={<Typography.Text strong>Loại áp dụng</Typography.Text>} 
             name="type" 
             rules={[{ required: true, message: 'Vui lòng chọn loại!' }]}
+            initialValue="NEWS"
           >
-            <Select placeholder="Chọn mục đích sử dụng">
+            <Select>
               <Select.Option value="SERVICE">Dành cho Dịch vụ</Select.Option>
               <Select.Option value="NEWS">Dành cho Tin tức</Select.Option>
             </Select>
           </Form.Item>
 
-          <Typography.Title level={5} style={{ marginTop: 20 }}>
-            <GlobalOutlined /> Nội dung đa ngôn ngữ
-          </Typography.Title>
-          
-          <Tabs defaultActiveKey="vi" items={[
-            { key: 'vi', label: 'Tiếng Việt', children: renderTranslationFields(0, 'Tiếng Việt') },
-            { key: 'en', label: 'English', children: renderTranslationFields(1, 'English') },
-            { key: 'zh', label: 'Chinese', children: renderTranslationFields(2, 'Chinese') },
-          ]} />
+          <Card title={<Space><GlobalOutlined />Nội dung đa ngôn ngữ</Space>} size="small" style={{ marginTop: 20 }}>
+            <Tabs defaultActiveKey="vi" items={tabItems} type="card" />
+          </Card>
         </Form>
       </Drawer>
     </Space>

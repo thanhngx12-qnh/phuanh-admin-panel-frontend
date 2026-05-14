@@ -1,10 +1,15 @@
-// src/app/(admin)/admin/_components/StatCards.tsx
+// dir: src/app/(admin)/admin/_components/StatCards.tsx
 'use client';
 
 import React from 'react';
-import { Card, Col, Row, Statistic, Spin } from 'antd';
+import { Card, Col, Row, Statistic, Spin, Typography } from 'antd';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { 
+  FileSearchOutlined, 
+  TruckOutlined, 
+  UsergroupAddOutlined, 
+  ReadOutlined 
+} from '@ant-design/icons';
 import api, { BackendResponse } from '@/lib/axios';
 
 type SummaryStats = {
@@ -26,41 +31,71 @@ export function StatCards() {
   });
 
   if (isLoading) {
-    return <Spin />;
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <Spin size="large" tip="Đang tải dữ liệu..." />
+      </div>
+    );
   }
 
+  // --- Cấu hình các thẻ thống kê ---
+  const statsConfig = [
+    {
+      title: 'Báo giá mới',
+      value: data?.newQuotesCount || 0,
+      icon: <FileSearchOutlined style={{ color: '#E60000' }} />, // Đỏ thương hiệu
+      suffix: 'yêu cầu',
+      color: '#E60000',
+    },
+    {
+      title: 'Vận đơn đang xử lý',
+      value: data?.processingConsignmentsCount || 0,
+      icon: <TruckOutlined style={{ color: '#003366' }} />, // Xanh thương hiệu
+      suffix: 'đơn',
+      color: '#003366',
+    },
+    {
+      title: 'Hồ sơ ứng tuyển',
+      value: data?.pendingApplicationsCount || 0,
+      icon: <UsergroupAddOutlined style={{ color: '#1890ff' }} />,
+      suffix: 'hồ sơ',
+      color: '#1890ff',
+    },
+    {
+      title: 'Bài viết đã đăng',
+      value: data?.totalPublishedNews || 0,
+      icon: <ReadOutlined style={{ color: '#52c41a' }} />,
+      suffix: 'bài',
+      color: '#52c41a',
+    },
+  ];
+
   return (
-    <Row gutter={16}>
-      <Col span={6}>
-        <Card bordered={false}>
-          <Statistic
-            title="Báo giá mới"
-            value={data?.newQuotesCount}
-            valueStyle={{ color: '#3f8600' }}
-            prefix={<ArrowUpOutlined />}
-          />
-        </Card>
-      </Col>
-      <Col span={6}>
-        <Card bordered={false}>
-          <Statistic
-            title="Vận đơn đang xử lý"
-            value={data?.processingConsignmentsCount}
-            valueStyle={{ color: '#cf1322' }}
-            prefix={<ArrowDownOutlined />}
-          />
-        </Card>
-      </Col>
-      <Col span={6}>
-        <Card bordered={false}>
-          <Statistic title="Hồ sơ ứng tuyển" value={data?.pendingApplicationsCount} />
-        </Card>
-      </Col>
-      <Col span={6}>
-        <Card bordered={false}>
-          <Statistic title="Bài viết đã đăng" value={data?.totalPublishedNews} />
-        </Card>
-      </Col>
+    <Row gutter={[16, 16]}>
+      {statsConfig.map((item, index) => (
+        <Col xs={24} sm={12} md={6} key={index}>
+          <Card 
+            // SỬA LỖI TẠI ĐÂY: Thay bordered={false} bằng variant="borderless"
+            variant="borderless" 
+            style={{ 
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+              borderRadius: '12px'
+            }}
+          >
+            <Statistic
+              title={
+                <Typography.Text type="secondary" strong style={{ fontSize: '14px', textTransform: 'uppercase' }}>
+                  {item.title}
+                </Typography.Text>
+              }
+              value={item.value}
+              valueStyle={{ color: item.color, fontWeight: 800, fontSize: '28px' }}
+              prefix={item.icon}
+              suffix={<span style={{ fontSize: '14px', marginLeft: '4px' }}>{item.suffix}</span>}
+            />
+          </Card>
+        </Col>
+      ))}
     </Row>
   );
 }
